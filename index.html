@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pendientes — Santiago</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f4f5f7; color: #1a1a2e;
+  padding: 16px; font-size: 14px; min-height: 100vh;
+}
+
+/* ── SETUP SCREEN ── */
+.setup-overlay {
+  position: fixed; inset: 0; background: #f4f5f7;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+.setup-card {
+  background: #fff; border-radius: 16px; padding: 32px;
+  max-width: 440px; width: 100%;
+  box-shadow: 0 4px 24px rgba(0,0,0,.12);
+}
+.setup-card h2 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+.setup-card p  { font-size: 12px; color: #6b7280; margin-bottom: 24px; line-height: 1.6; }
+.setup-card label { display: block; font-size: 11px; font-weight: 700; color: #374151; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+.setup-card input {
+  width: 100%; padding: 9px 12px; border-radius: 8px;
+  border: 1.5px solid #e5e7eb; font-size: 12px; font-family: monospace;
+  margin-bottom: 14px; outline: none; transition: border-color .15s;
+}
+.setup-card input:focus { border-color: #6366f1; }
+.setup-btn {
+  width: 100%; padding: 11px; background: #1a1a2e; color: #fff;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.setup-btn:hover { background: #6366f1; }
+.setup-err { color: #dc2626; font-size: 11px; margin-top: 8px; display: none; }
+
+/* ── HEADER ── */
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.header h1 { font-size: 18px; font-weight: 800; }
+.header-right { text-align: right; }
+.sync-info { font-size: 10px; color: #9ca3af; line-height: 1.7; }
+.btn-sm {
+  font-size: 10px; font-weight: 700; padding: 4px 10px;
+  border-radius: 20px; border: 1.5px solid #e5e7eb;
+  background: #fff; color: #6b7280; cursor: pointer; margin-left: 4px;
+}
+.btn-sm:hover { border-color: #6366f1; color: #6366f1; }
+.date-sub { font-size: 11px; color: #9ca3af; margin-top: 3px; text-transform: capitalize; }
+
+/* ── STATS ── */
+.stats { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.stat { background: #fff; border-radius: 10px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); flex: 1; min-width: 70px; text-align: center; }
+.stat-val { font-size: 24px; font-weight: 800; color: #1a1a2e; line-height: 1; }
+.stat-lbl { font-size: 9px; color: #9ca3af; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-top: 3px; }
+.s-hoy  .stat-val { color: #d97706; }
+.s-crit .stat-val { color: #dc2626; }
+.s-venc .stat-val { color: #7c3aed; }
+
+/* ── SECTIONS ── */
+.section { margin-bottom: 20px; }
+.section-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: #6b7280;
+  margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 1.5px solid #e5e7eb;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.badge { background: #e5e7eb; color: #6b7280; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
+
+/* ── FILTERS ── */
+.filter-bar { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.fbtn {
+  font-size: 10px; font-weight: 600; padding: 3px 10px;
+  border-radius: 20px; border: 1.5px solid #e5e7eb;
+  background: #fff; color: #6b7280; cursor: pointer;
+  display: flex; align-items: center; gap: 4px; transition: all .12s;
+}
+.fbtn:hover  { border-color: #6366f1; color: #6366f1; }
+.fbtn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+.fcat-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* ── TASK CARDS ── */
+.tasks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; }
+.task-card {
+  background: #fff; border-radius: 8px; padding: 10px 12px;
+  border-left: 3px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+.p-critica { border-left-color: #ef4444; }
+.p-alta    { border-left-color: #f97316; }
+.p-media   { border-left-color: #eab308; }
+.p-baja    { border-left-color: #22c55e; }
+.is-hoy    { background: #fffbeb; }
+.is-venc   { border-left-color: #7c3aed; }
+.task-desc { font-size: 12.5px; font-weight: 500; color: #111827; line-height: 1.45; }
+.task-meta { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+.tag-cat    { background: #f3f4f6; color: #374151; }
+.tag-status { background: #f3f4f6; color: #374151; }
+.tag-venc   { background: #fff7ed; color: #c2410c; font-weight: 700; }
+.tag-venc.urgent { background: #fef2f2; color: #dc2626; }
+.tag-terc   { background: #eff6ff; color: #2563eb; }
+.tag-id     { background: #f3f4f6; color: #9ca3af; font-size: 9px; }
+
+/* ── CALENDAR ── */
+.cal-day { margin-bottom: 12px; }
+.cal-day-header { font-size: 10px; font-weight: 800; color: #6366f1; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.cal-event { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 8px; padding: 8px 12px; margin-bottom: 4px; border-left: 3px solid #6366f1; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.cal-time   { font-size: 11px; font-weight: 700; color: #6366f1; min-width: 46px; flex-shrink: 0; }
+.cal-allday { font-size: 10px; color: #9ca3af; font-style: italic; min-width: 46px; flex-shrink: 0; }
+.cal-title  { font-size: 12.5px; color: #111827; }
+
+/* ── STATES ── */
+.empty   { color: #9ca3af; font-size: 12px; font-style: italic; padding: 6px 0; }
+.loading { text-align: center; color: #9ca3af; padding: 50px 0; font-size: 13px; }
+.err-box { background: #fef2f2; color: #dc2626; border-radius: 8px; padding: 12px; font-size: 12px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- Setup screen -->
+<div class="setup-overlay" id="setup" style="display:none">
+  <div class="setup-card">
+    <h2>📋 Pendientes — Configuración</h2>
+    <p>Primera vez o nueva configuración. Ingresá la URL y el token del Apps Script para conectar con tus tareas.</p>
+    <label>URL del Apps Script</label>
+    <input id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+    <label>Token secreto</label>
+    <input id="cfg-token" type="password" placeholder="Tu token">
+    <button class="setup-btn" onclick="saveConfig()">Conectar</button>
+    <div class="setup-err" id="cfg-err"></div>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main" style="display:none">
+  <div class="header">
+    <div>
+      <h1>📋 Pendientes</h1>
+      <div class="date-sub" id="date-line"></div>
+    </div>
+    <div class="header-right">
+      <div class="sync-info" id="sync-info">Cargando...</div>
+      <button class="btn-sm" onclick="loadData()">↻</button>
+      <button class="btn-sm" onclick="showSetup()" title="Cambiar configuración">⚙</button>
+    </div>
+  </div>
+  <div id="app"><div class="loading">⏳ Cargando...</div></div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+const CFG_KEY = 'pendientes_cfg';
+let CFG = null;
+
+function loadConfig() {
+  try { CFG = JSON.parse(localStorage.getItem(CFG_KEY)); } catch(e) { CFG = null; }
+  return CFG && CFG.url && CFG.token;
+}
+function saveConfig() {
+  const url   = document.getElementById('cfg-url').value.trim();
+  const token = document.getElementById('cfg-token').value.trim();
+  const err   = document.getElementById('cfg-err');
+  if (!url || !token) { err.textContent = 'Completá ambos campos.'; err.style.display='block'; return; }
+  CFG = { url, token };
+  localStorage.setItem(CFG_KEY, JSON.stringify(CFG));
+  err.style.display = 'none';
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('main').style.display  = 'block';
+  loadData();
+}
+function showSetup() {
+  if (CFG) {
+    document.getElementById('cfg-url').value   = CFG.url;
+    document.getElementById('cfg-token').value = CFG.token;
+  }
+  document.getElementById('main').style.display  = 'none';
+  document.getElementById('setup').style.display = 'flex';
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+const CAT_COLORS = {
+  'Estudio Trivelloni':      '#1565C0',
+  'Conceptual Brasil':       '#00897B',
+  'Inversiones Financieras': '#7B1FA2',
+  'Inversiones Real Estate': '#1A237E',
+  'Campo':                   '#558B2F',
+  'Finanzas Personales':     '#F57F17',
+  'Casa y Autos':            '#4E342E',
+  'Otros':                   '#546E7A',
+};
+const CAT_ORDER = Object.keys(CAT_COLORS);
+
+let ALL_TASKS = [], CAL_EVENTS = [], activeCat = 'Todas';
+
+document.getElementById('date-line').textContent =
+  new Date().toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+// ── NORMALIZE ─────────────────────────────────────────────────
+function normPrio(r) {
+  if (!r) return '';
+  if (r.includes('rítica') || r.includes('ritica')) return '🔴 Crítica';
+  if (r.includes('Alta'))   return '🟠 Alta';
+  if (r.includes('Media'))  return '🟡 Media';
+  if (r.includes('Baja'))   return '🟢 Baja';
+  return r;
+}
+function normStatus(r) {
+  if (!r) return '';
+  if (r.includes('Terminado'))   return '✅ Terminado';
+  if (r.includes('Comenzado'))   return '🔄 Comenzado';
+  if (r.includes('Seguimiento')) return '👁 Seguimiento';
+  if (r.includes('Largo'))       return '📌 Largo Plazo';
+  if (r.includes('Nuevo'))       return '🆕 Nuevo';
+  return r;
+}
+
+// ── DATE UTILS ────────────────────────────────────────────────
+function daysFrom(dateStr) {
+  if (!dateStr) return null;
+  const [y,m,d] = dateStr.slice(0,10).split('-').map(Number);
+  const target = new Date(y, m-1, d);
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((target - now) / 864e5);
+}
+function labelDays(diff) {
+  if (diff === null) return '';
+  if (diff === 0)  return 'Hoy';
+  if (diff === 1)  return 'Mañana';
+  if (diff < 0)   return `Vencida hace ${Math.abs(diff)}d`;
+  return `en ${diff}d`;
+}
+function dayLabel(dateStr) {
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt   = new Date(y, m-1, d);
+  const now  = new Date(); now.setHours(0,0,0,0);
+  const diff = Math.round((dt - now) / 864e5);
+  if (diff === 0) return 'Hoy';
+  if (diff === 1) return 'Mañana';
+  return dt.toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'short'});
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function prioCls(p) {
+  if (!p) return '';
+  if (p.includes('rítica')) return 'p-critica';
+  if (p.includes('Alta'))   return 'p-alta';
+  if (p.includes('Media'))  return 'p-media';
+  if (p.includes('Baja'))   return 'p-baja';
+  return '';
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderTask(t, extra='') {
+  const isHoy = t.hoy === '✅';
+  let vTag = '';
+  if (t.venc) {
+    const diff = daysFrom(t.venc);
+    const urg  = diff !== null && diff <= 2;
+    vTag = `<span class="tag tag-venc${urg?' urgent':''}" title="${esc(t.venc)}">⏰ ${labelDays(diff)}</span>`;
+  }
+  const cColor  = CAT_COLORS[t.cat] || '#666';
+  const tercTag = t.tercero ? `<span class="tag tag-terc">👤 ${esc(t.tercero)}</span>` : '';
+  return `<div class="task-card ${prioCls(t.prio)}${isHoy?' is-hoy':''}${extra}">
+    <div class="task-desc">${esc(t.desc)}</div>
+    <div class="task-meta">
+      <span class="tag tag-cat" style="border-left:2px solid ${cColor}">${esc(t.cat)}</span>
+      <span class="tag tag-status">${esc(normStatus(t.status))}</span>
+      ${vTag}${tercTag}
+      <span class="tag tag-id">#${t.id}</span>
+    </div>
+  </div>`;
+}
+
+function renderCalendar(events) {
+  if (!events || !events.length) return '<div class="empty">Sin eventos en los próximos 7 días.</div>';
+  const byDate = {};
+  events.forEach(e => { (byDate[e.date] = byDate[e.date]||[]).push(e); });
+  return Object.keys(byDate).sort().map(date => {
+    const evs = byDate[date].map(e =>
+      `<div class="cal-event">
+        ${e.time ? `<span class="cal-time">🕐 ${e.time}</span>` : `<span class="cal-allday">Todo el día</span>`}
+        <span class="cal-title">${esc(e.title)}</span>
+      </div>`).join('');
+    return `<div class="cal-day">
+      <div class="cal-day-header">📅 ${dayLabel(date)}</div>${evs}
+    </div>`;
+  }).join('');
+}
+
+function buildFilterBar(tasks) {
+  const used = CAT_ORDER.filter(c => tasks.some(t => t.cat === c));
+  return ['Todas', ...used].map(c => {
+    const cnt = c === 'Todas' ? tasks.length : tasks.filter(t => t.cat === c).length;
+    const col = c === 'Todas' ? '#6366f1' : (CAT_COLORS[c]||'#666');
+    const dot = c === 'Todas' ? '' : `<span class="fcat-dot" style="background:${col}"></span>`;
+    return `<button class="fbtn${c===activeCat?' active':''}" onclick="setFilter('${esc(c)}')">${dot}${esc(c)} (${cnt})</button>`;
+  }).join('');
+}
+
+function setFilter(cat) { activeCat = cat; renderAll(); }
+
+function renderAll() {
+  const tasks  = ALL_TASKS;
+  const hoy    = tasks.filter(t => t.hoy === '✅');
+  const rest   = tasks.filter(t => t.hoy !== '✅');
+  const vencen = rest.filter(t => { const d=daysFrom(t.venc); return d!==null && d>=0 && d<=7; });
+  const criticos = tasks.filter(t => (t.prio||'').includes('rítica')).length;
+  const priOrd = {'🔴 Crítica':1,'🟠 Alta':2,'🟡 Media':3,'🟢 Baja':4};
+  const filtered = (activeCat==='Todas' ? rest : rest.filter(t=>t.cat===activeCat))
+    .sort((a,b) => {
+      const ci = CAT_ORDER.indexOf(a.cat) - CAT_ORDER.indexOf(b.cat);
+      return ci !== 0 ? ci : (priOrd[normPrio(a.prio)]||9)-(priOrd[normPrio(b.prio)]||9);
+    });
+
+  let html = `<div class="stats">
+    <div class="stat"><div class="stat-val">${tasks.length}</div><div class="stat-lbl">Total activos</div></div>
+    <div class="stat s-hoy"><div class="stat-val">${hoy.length}</div><div class="stat-lbl">⭐ Hoy</div></div>
+    <div class="stat s-crit"><div class="stat-val">${criticos}</div><div class="stat-lbl">🔴 Críticos</div></div>
+    <div class="stat s-venc"><div class="stat-val">${vencen.length}</div><div class="stat-lbl">⏰ 7 días</div></div>
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#22c55e"></span>Foco del día<span class="badge">${hoy.length}</span></div>
+    ${hoy.length ? hoy.map(t=>renderTask(t)).join('') : '<div class="empty">Sin tareas marcadas para hoy.</div>'}
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#7c3aed"></span>Vencen en los próximos 7 días<span class="badge">${vencen.length}</span></div>
+    ${vencen.length ? vencen.map(t=>renderTask(t,' is-venc')).join('') : '<div class="empty">Sin vencimientos próximos.</div>'}
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#6366f1"></span>Agenda próximos 7 días<span class="badge">${CAL_EVENTS.length}</span></div>
+    ${renderCalendar(CAL_EVENTS)}
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#9ca3af"></span>Todos los pendientes<span class="badge">${filtered.length}</span></div>
+    <div class="filter-bar">${buildFilterBar(rest)}</div>
+    <div class="tasks-grid">${filtered.length ? filtered.map(t=>renderTask(t)).join('') : '<div class="empty">Sin tareas en esta categoría.</div>'}</div>
+  </div>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+// ── LOAD ──────────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('app').innerHTML = '<div class="loading">⏳ Cargando...</div>';
+  const { url, token } = CFG;
+  try {
+    const res  = await fetch(`${url}?token=${encodeURIComponent(token)}&action=get_all`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    ALL_TASKS  = (data.tasks    || []).map(t => ({ ...t, prio: normPrio(t.prio) }));
+    CAL_EVENTS = data.calendar  || [];
+    document.getElementById('sync-info').textContent =
+      `Actualizado: ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} · ${ALL_TASKS.length} tareas · ${CAL_EVENTS.length} eventos`;
+    renderAll();
+  } catch(err) {
+    document.getElementById('app').innerHTML =
+      `<div class="err-box">❌ ${esc(err.message)}<br><small>Verificá la URL y el token en ⚙</small></div>`;
+    document.getElementById('sync-info').textContent = 'Error al cargar';
+  }
+}
+
+// ── STARTUP ───────────────────────────────────────────────────
+if (loadConfig()) {
+  document.getElementById('main').style.display  = 'block';
+  loadData();
+} else {
+  document.getElementById('setup').style.display = 'flex';
+}
+</script>
+</body>
+</html>

@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pendientes — Santiago</title>
+<title>Dashboard — Santiago</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
 <style>
 :root { color-scheme: light; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,17 +43,30 @@ body {
 .setup-err { color: #dc2626; font-size: 11px; margin-top: 8px; display: none; }
 
 /* ── HEADER ── */
-.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
 .header h1 { font-size: 18px; font-weight: 800; }
 .header-right { text-align: right; }
 .sync-info { font-size: 10px; color: #9ca3af; line-height: 1.7; }
 .btn-sm {
-  font-size: 24px; font-weight: 700; padding: 10px 20px;
+  font-size: 20px; font-weight: 700; padding: 8px 16px;
   border-radius: 20px; border: 2px solid #e5e7eb;
-  background: #fff; color: #6b7280; cursor: pointer; margin-left: 8px;
+  background: #fff; color: #6b7280; cursor: pointer; margin-left: 6px;
 }
 .btn-sm:hover { border-color: #6366f1; color: #6366f1; }
 .date-sub { font-size: 11px; color: #9ca3af; margin-top: 3px; text-transform: capitalize; }
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex; gap: 4px; margin-bottom: 16px;
+  background: #e5e7eb; border-radius: 10px; padding: 4px;
+}
+.tab-btn {
+  flex: 1; padding: 9px 12px; border: none; border-radius: 7px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  background: transparent; color: #6b7280; transition: all .15s;
+}
+.tab-btn.active { background: #fff; color: #1a1a2e; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.tab-btn:hover:not(.active) { color: #1a1a2e; }
 
 /* ── STATS ── */
 .stats { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -78,7 +92,7 @@ body {
 /* ── FILTERS ── */
 .filter-bar { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
 .fbtn {
-  font-size: 18px; font-weight: 600; padding: 10px 20px;
+  font-size: 12px; font-weight: 600; padding: 6px 14px;
   border-radius: 20px; border: 2px solid #e5e7eb;
   background: #fff; color: #6b7280; cursor: pointer;
   display: flex; align-items: center; gap: 6px; transition: all .12s;
@@ -117,6 +131,41 @@ body {
 .cal-allday { font-size: 10px; color: #9ca3af; font-style: italic; min-width: 46px; flex-shrink: 0; }
 .cal-title  { font-size: 12.5px; color: #111827; }
 
+/* ── CAJA STYLES ── */
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin-bottom: 16px;
+}
+@media (max-width: 480px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+.metric-card { background: #fff; border-radius: 10px; border: 0.5px solid #e5e7eb; padding: 14px 16px; }
+.metric-card .label { font-size: 11px; color: #888; margin-bottom: 6px; line-height: 1.4; }
+.metric-card .value { font-size: 20px; font-weight: 600; line-height: 1.1; }
+.metric-card .sub { font-size: 10px; color: #aaa; margin-top: 4px; }
+.metric-card.placeholder { background: transparent; border: none; }
+.value.red   { color: #b83232; }
+.value.amber { color: #8a5000; }
+.value.green { color: #2a6e2a; }
+.caja-card { background: #fff; border-radius: 10px; border: 0.5px solid #e5e7eb; padding: 16px; margin-bottom: 16px; }
+.caja-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.caja-table thead th { font-size: 11px; font-weight: 500; color: #999; text-align: right; padding: 0 0 8px; border-bottom: 0.5px solid #ebebeb; }
+.caja-table thead th:first-child { text-align: left; }
+.caja-table tbody tr { border-bottom: 0.5px solid #f0efeb; }
+.caja-table tbody tr:last-child { border-bottom: none; }
+.caja-table tbody td { padding: 7px 0; text-align: right; }
+.caja-table tbody td:first-child { text-align: left; color: #444; }
+.caja-table tfoot td { padding: 9px 0 0; font-weight: 600; text-align: right; border-top: 0.5px solid #d0cfcc; }
+.caja-table tfoot td:first-child { text-align: left; }
+.neg { color: #b83232; }
+.muted { color: #bbb; }
+.chart-wrap { position: relative; height: 200px; margin-top: 12px; }
+.chart-wrap.tall { height: 280px; }
+.caja-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.alert { border-radius: 8px; padding: 10px 14px; font-size: 12px; line-height: 1.5; }
+.alert.danger  { background: #fdf0f0; color: #9b2020; border: 0.5px solid #f5c6c6; }
+.alert.warning { background: #fdf6e8; color: #7a4500; border: 0.5px solid #f0d898; }
+.section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6b7280; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1.5px solid #e5e7eb; }
+.caja-meta { font-size: 11px; color: #9ca3af; margin-bottom: 16px; }
+
 /* ── STATES ── */
 .empty   { color: #9ca3af; font-size: 12px; font-style: italic; padding: 6px 0; }
 .loading { text-align: center; color: #9ca3af; padding: 50px 0; font-size: 13px; }
@@ -128,7 +177,7 @@ body {
 <!-- Setup screen -->
 <div class="setup-overlay" id="setup" style="display:none">
   <div class="setup-card">
-    <h2>📋 Pendientes — Configuración</h2>
+    <h2>📋 Dashboard — Configuración</h2>
     <p>Primera vez o nueva configuración. Ingresá la URL y el token del Apps Script para conectar con tus tareas.</p>
     <label>URL del Apps Script</label>
     <input id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
@@ -143,22 +192,43 @@ body {
 <div id="main" style="display:none">
   <div class="header">
     <div>
-      <h1>📋 Pendientes</h1>
+      <h1>📊 Dashboard</h1>
       <div class="date-sub" id="date-line"></div>
     </div>
     <div class="header-right">
       <div class="sync-info" id="sync-info">Cargando...</div>
-      <button class="btn-sm" onclick="loadData()">↻</button>
-      <button class="btn-sm" onclick="showSetup()" title="Cambiar configuración">⚙</button>
+      <button class="btn-sm" onclick="refreshActive()" title="Actualizar">↻</button>
+      <button class="btn-sm" onclick="showSetup()" title="Configuración">⚙</button>
     </div>
   </div>
-  <div id="app"><div class="loading">⏳ Cargando...</div></div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button id="tab-pendientes" class="tab-btn active" onclick="switchTab('pendientes')">📋 Pendientes</button>
+    <button id="tab-caja"       class="tab-btn"        onclick="switchTab('caja')">💰 Caja</button>
+  </div>
+
+  <!-- Pendientes view -->
+  <div id="view-pendientes">
+    <div id="app"><div class="loading">⏳ Cargando...</div></div>
+  </div>
+
+  <!-- Caja view -->
+  <div id="view-caja" style="display:none">
+    <div id="caja-app"><div class="loading">⏳ Cargando caja...</div></div>
+  </div>
 </div>
 
 <script>
-// ── CONFIG ────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════════════
 const CFG_KEY = 'pendientes_cfg';
+const CAJA_JSON_URL = 'https://raw.githubusercontent.com/ssocas/Pendientes-dashboard/main/caja_dashboard.json';
 let CFG = null;
+let activeTab = 'pendientes';
+let cajaLoaded = false;
+let cajaCharts = {};
 
 function loadConfig() {
   try { CFG = JSON.parse(localStorage.getItem(CFG_KEY)); } catch(e) { CFG = null; }
@@ -185,7 +255,30 @@ function showSetup() {
   document.getElementById('setup').style.display = 'flex';
 }
 
-// ── INIT ──────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-pendientes').className = 'tab-btn' + (tab === 'pendientes' ? ' active' : '');
+  document.getElementById('tab-caja').className       = 'tab-btn' + (tab === 'caja'       ? ' active' : '');
+  document.getElementById('view-pendientes').style.display = tab === 'pendientes' ? 'block' : 'none';
+  document.getElementById('view-caja').style.display       = tab === 'caja'       ? 'block' : 'none';
+  if (tab === 'caja' && !cajaLoaded) loadCaja();
+}
+
+function refreshActive() {
+  if (activeTab === 'pendientes') {
+    loadData();
+  } else {
+    cajaLoaded = false;
+    loadCaja();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// PENDIENTES — init
+// ════════════════════════════════════════════════════════════════
 const CAT_COLORS = {
   'Estudio Trivelloni':      '#1565C0',
   'Conceptual Brasil':       '#00897B',
@@ -203,7 +296,6 @@ let ALL_TASKS = [], CAL_EVENTS = [], activeCat = 'Todas';
 document.getElementById('date-line').textContent =
   new Date().toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
-// ── NORMALIZE ─────────────────────────────────────────────────
 function normPrio(r) {
   if (!r) return '';
   if (r.includes('rítica') || r.includes('ritica')) return '🔴 Crítica';
@@ -221,8 +313,6 @@ function normStatus(r) {
   if (r.includes('Nuevo'))       return '🆕 Nuevo';
   return r;
 }
-
-// ── DATE UTILS ────────────────────────────────────────────────
 function daysFrom(dateStr) {
   if (!dateStr) return null;
   const [y,m,d] = dateStr.slice(0,10).split('-').map(Number);
@@ -246,8 +336,6 @@ function dayLabel(dateStr) {
   if (diff === 1) return 'Mañana';
   return dt.toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'short'});
 }
-
-// ── RENDER ────────────────────────────────────────────────────
 function prioCls(p) {
   if (!p) return '';
   if (p.includes('rítica')) return 'p-critica';
@@ -259,7 +347,6 @@ function prioCls(p) {
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
 function renderTask(t, extra='') {
   const isHoy = t.hoy === '✅';
   let vTag = '';
@@ -280,7 +367,6 @@ function renderTask(t, extra='') {
     </div>
   </div>`;
 }
-
 function renderCalendar(events) {
   if (!events || !events.length) return '<div class="empty">Sin eventos en los próximos 7 días.</div>';
   const byDate = {};
@@ -296,7 +382,6 @@ function renderCalendar(events) {
     </div>`;
   }).join('');
 }
-
 function buildFilterBar(tasks) {
   const used = CAT_ORDER.filter(c => tasks.some(t => t.cat === c));
   return ['Todas', ...used].map(c => {
@@ -306,9 +391,7 @@ function buildFilterBar(tasks) {
     return `<button class="fbtn${c===activeCat?' active':''}" onclick="setFilter('${esc(c)}')">${dot}${esc(c)} (${cnt})</button>`;
   }).join('');
 }
-
 function setFilter(cat) { activeCat = cat; renderAll(); }
-
 function renderAll() {
   const tasks  = ALL_TASKS;
   const hoy    = tasks.filter(t => t.hoy === '✅');
@@ -352,8 +435,6 @@ function renderAll() {
 
   document.getElementById('app').innerHTML = html;
 }
-
-// ── LOAD ──────────────────────────────────────────────────────
 async function loadData() {
   document.getElementById('app').innerHTML = '<div class="loading">⏳ Cargando...</div>';
   const { url, token } = CFG;
@@ -373,7 +454,241 @@ async function loadData() {
   }
 }
 
-// ── STARTUP ───────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+// CAJA
+// ════════════════════════════════════════════════════════════════
+function fmt(n, dec=0) {
+  if (n===null || n===undefined || isNaN(n)) return null;
+  return new Intl.NumberFormat('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec}).format(n);
+}
+function fmtARS(n) {
+  if (n===null || n===undefined) return '<span class="muted">-</span>';
+  return '$' + fmt(Math.round(n));
+}
+function fmtUSD(n) {
+  if (n===null || n===undefined) return '<span class="muted">-</span>';
+  const abs = Math.abs(n);
+  const s = 'USD ' + fmt(abs);
+  return n < 0 ? `<span class="neg">(${s})</span>` : s;
+}
+function metricCard(label, valueHtml, sub='', extraClass='') {
+  return `<div class="metric-card">
+    <div class="label">${label}</div>
+    <div class="value ${extraClass}">${valueHtml}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ''}
+  </div>`;
+}
+function destroyCajaCharts() {
+  Object.values(cajaCharts).forEach(c => { try { c.destroy(); } catch(e) {} });
+  cajaCharts = {};
+}
+
+async function loadCaja() {
+  destroyCajaCharts();
+  document.getElementById('caja-app').innerHTML = '<div class="loading">⏳ Cargando caja...</div>';
+  try {
+    const res = await fetch(CAJA_JSON_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    cajaLoaded = true;
+    renderCaja(d);
+  } catch(err) {
+    document.getElementById('caja-app').innerHTML =
+      `<div class="err-box">❌ No se pudo cargar caja_dashboard.json<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+function renderCaja(d) {
+  const saldoARS   = d.saldo_ars;
+  const semanal    = d.promedio_semanal;
+  const saldoUSD   = d.saldo_usd;
+  const consumoUSD = d.promedio_consumo_usd;
+  const compraUSD  = d.promedio_compraventa_usd;
+  const invUSD     = d.promedio_inversiones_usd;
+  const billeteras = (d.caja_usd || []).filter(r => r.nombre);
+  const ctas       = (d.ctas_ctes_usd || []).filter(r => r.nombre);
+
+  // ── Runway ARS ──
+  let runwayARS = null, arsClass = '';
+  if (saldoARS && semanal && semanal > 0) {
+    runwayARS = Math.round((saldoARS / semanal) * 7);
+    arsClass  = runwayARS < 7 ? 'red' : runwayARS < 14 ? 'amber' : 'green';
+  }
+
+  // ── Runway USD ──
+  let runwayUSD = null, usdClass = '';
+  if (saldoUSD && consumoUSD && consumoUSD < 0) {
+    runwayUSD = Math.round((saldoUSD / Math.abs(consumoUSD)) * 10) / 10;
+    usdClass  = runwayUSD < 1 ? 'red' : runwayUSD < 3 ? 'amber' : 'green';
+  }
+
+  let html = '';
+
+  // Meta
+  html += `<div class="caja-meta">Generado: ${d.generado || '-'}${d.actualizado_al ? ' · Datos al: ' + d.actualizado_al : ''}</div>`;
+
+  // ── ARS alerts ──
+  let alerts = '';
+  if (runwayARS !== null && runwayARS < 7)  alerts += `<div class="alert danger"><strong>Caja ARS crítica:</strong> saldo cubre ~${runwayARS} días.</div>`;
+  else if (runwayARS !== null && runwayARS < 14) alerts += `<div class="alert warning"><strong>Caja ARS baja:</strong> saldo cubre ~${runwayARS} días.</div>`;
+
+  // ── ARS metrics ──
+  html += `<div class="section-label">Caja ARS</div>`;
+  html += `<div class="metrics-grid">
+    ${metricCard('Saldo actual', saldoARS !== null ? fmtARS(saldoARS) : '-', '', arsClass ? arsClass : '')}
+    ${metricCard('Gasto semanal prom. (90d)', semanal !== null ? fmtARS(semanal) : '-')}
+    ${metricCard('Runway estimado', runwayARS !== null ? runwayARS + ' días' : '-', 'al ritmo actual', arsClass)}
+  </div>`;
+  if (alerts) html += `<div class="caja-alerts">${alerts}</div>`;
+
+  // ── USD alerts ──
+  let usdAlerts = '';
+  if (runwayUSD !== null && runwayUSD < 1)  usdAlerts += `<div class="alert danger"><strong>Caja USD crítica:</strong> runway ~${runwayUSD} meses.</div>`;
+  else if (runwayUSD !== null && runwayUSD < 3) usdAlerts += `<div class="alert warning"><strong>Caja USD baja:</strong> runway ~${runwayUSD} meses.</div>`;
+
+  // ── USD metrics ──
+  html += `<div class="section-label">Caja USD</div>`;
+  html += `<div class="metrics-grid">
+    ${metricCard('Saldo actual', saldoUSD !== null ? fmtUSD(saldoUSD) : '-')}
+    ${metricCard('Consumo mensual prom. (90d)', consumoUSD !== null ? fmtUSD(consumoUSD) : '-')}
+    ${metricCard('Runway estimado', runwayUSD !== null ? runwayUSD + ' meses' : '-', 'al ritmo actual', usdClass)}
+    ${metricCard('Compraventa mensual prom. (90d)', compraUSD !== null ? fmtUSD(compraUSD) : '-')}
+    ${metricCard('Inversiones mensual prom. (90d)', invUSD !== null ? fmtUSD(invUSD) : '-')}
+    <div class="metric-card placeholder"></div>
+  </div>`;
+  if (usdAlerts) html += `<div class="caja-alerts">${usdAlerts}</div>`;
+
+  // ── Billeteras USD ──
+  if (billeteras.length > 0) {
+    const rows = billeteras.map(r =>
+      `<tr><td>${esc(r.nombre)}</td><td>${fmtUSD(r.cash)}</td><td>${fmtUSD(r.caja_seg)}</td><td>${fmtUSD(r.total)}</td></tr>`
+    ).join('');
+    const tfoot = d.total_usd !== null
+      ? `<tfoot><tr><td>Total USD neto</td><td></td><td></td><td>${fmtUSD(d.total_usd)}</td></tr></tfoot>` : '';
+    html += `<div class="section-label">Caja USD — Billeteras</div>
+    <div class="caja-card">
+      <table class="caja-table">
+        <thead><tr><th>Billetera</th><th>Cash</th><th>Caja seg.</th><th>Total</th></tr></thead>
+        <tbody>${rows}</tbody>${tfoot}
+      </table>
+      <div class="chart-wrap"><canvas id="chartBilleteras"></canvas></div>
+    </div>`;
+  }
+
+  // ── Cuentas corrientes ──
+  if (ctas.length > 0) {
+    const ctaRows = ctas.map(r => {
+      const neg = r.saldo < 0;
+      return `<tr><td>${esc(r.nombre)}</td><td class="${neg?'neg':''}">${fmtUSD(r.saldo)}</td></tr>`;
+    }).join('');
+    const ctaFoot = d.total_ctas_ctes_usd !== null
+      ? `<tfoot><tr><td>Total</td><td class="${d.total_ctas_ctes_usd<0?'neg':''}">${fmtUSD(d.total_ctas_ctes_usd)}</td></tr></tfoot>` : '';
+    html += `<div class="section-label">Cuentas corrientes terceros USD</div>
+    <div class="caja-card">
+      <table class="caja-table">
+        <thead><tr><th>Contraparte</th><th>Saldo (USD)</th></tr></thead>
+        <tbody>${ctaRows}</tbody>${ctaFoot}
+      </table>
+      <p style="font-size:11px;color:#bbb;margin-top:10px;">Negativo = presté dinero</p>
+    </div>`;
+  }
+
+  // ── Egresos ARS ──
+  if (d.chart_egresos && d.chart_egresos.meses && d.chart_egresos.meses.length > 0) {
+    html += `<div class="section-label">Egresos ARS por categoría — últimos 12 meses</div>
+    <div class="caja-card"><div class="chart-wrap tall"><canvas id="chartEgresos"></canvas></div></div>`;
+  }
+
+  // ── USD Ops ──
+  if (d.chart_usd_ops && d.chart_usd_ops.meses && d.chart_usd_ops.meses.length > 0) {
+    html += `<div class="section-label">Compras, ventas e inversiones USD — últimos 12 meses</div>
+    <div class="caja-card"><div class="chart-wrap tall"><canvas id="chartUSDOps"></canvas></div></div>`;
+  }
+
+  document.getElementById('caja-app').innerHTML = html;
+
+  // ── Render charts ──
+  const CLRS = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#b07aa1'];
+
+  if (billeteras.length > 0) {
+    cajaCharts.billeteras = new Chart(document.getElementById('chartBilleteras'), {
+      type: 'bar',
+      data: {
+        labels: billeteras.map(r => r.nombre),
+        datasets: [{
+          label: 'Total USD',
+          data: billeteras.map(r => Math.round(r.total || 0)),
+          backgroundColor: billeteras.map(r => (r.total||0) < 0 ? '#f5c6c6' : '#c6dff5'),
+          borderColor:     billeteras.map(r => (r.total||0) < 0 ? '#b83232' : '#1860a8'),
+          borderWidth: 1, borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#f0efeb' }, ticks: { font: { size: 11 }, color: '#aaa' } },
+          y: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#555' } }
+        }
+      }
+    });
+  }
+
+  if (d.chart_egresos && d.chart_egresos.meses.length > 0) {
+    const ce = d.chart_egresos;
+    cajaCharts.egresos = new Chart(document.getElementById('chartEgresos'), {
+      type: 'bar',
+      data: {
+        labels: ce.meses,
+        datasets: ce.categorias.map((cat, i) => ({
+          label: cat, data: ce.datos[cat],
+          backgroundColor: CLRS[i % CLRS.length], borderWidth: 0, borderRadius: 2
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+          tooltip: { callbacks: { label: ctx => ' $' + fmt(ctx.raw) } }
+        },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 }, color: '#aaa' } },
+          y: { stacked: true, grid: { color: '#f0efeb' }, ticks: { font: { size: 10 }, color: '#aaa', callback: v => '$' + fmt(v) } }
+        }
+      }
+    });
+  }
+
+  if (d.chart_usd_ops && d.chart_usd_ops.meses.length > 0) {
+    const cu = d.chart_usd_ops;
+    cajaCharts.usdOps = new Chart(document.getElementById('chartUSDOps'), {
+      type: 'bar',
+      data: {
+        labels: cu.meses,
+        datasets: [
+          { label: 'Compra USD',      data: cu.compra,      backgroundColor: '#4e79a7', borderWidth: 0, borderRadius: 2 },
+          { label: 'Venta USD',       data: cu.venta,       backgroundColor: '#e15759', borderWidth: 0, borderRadius: 2 },
+          { label: 'Inversiones SS',  data: cu.inversiones, backgroundColor: '#59a14f', borderWidth: 0, borderRadius: 2 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+          tooltip: { callbacks: { label: ctx => ' $' + fmt(ctx.raw) } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#aaa' } },
+          y: { grid: { color: '#f0efeb' }, ticks: { font: { size: 10 }, color: '#aaa', callback: v => '$' + fmt(v) } }
+        }
+      }
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// STARTUP
+// ════════════════════════════════════════════════════════════════
 if (loadConfig()) {
   document.getElementById('main').style.display  = 'block';
   loadData();

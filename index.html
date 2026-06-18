@@ -1,811 +1,966 @@
-// ============================================================
-// PENDIENTES WEB APP  —  Google Apps Script  v2
-// ============================================================
-// Deploy: Extensiones → Apps Script → pegar este código
-//         Implementar → Administrar implementaciones → editar → Nueva versión
-//         Ejecutar como: Yo (ssocas@gmail.com)
-//         Quién tiene acceso: Cualquier usuario
-// ============================================================
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Santiago</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f4f5f7; color: #1a1a2e;
+  padding: 16px; font-size: 14px; min-height: 100vh;
+}
 
-const SECRET_TOKEN   = "Ydcw6oF8YBBsUc5wInnDGSbhVXpqizpj1qHD9Gg2YnM";
-const PENDIENTES_TAB = "Pendientes";
-const TZ             = "America/Argentina/Buenos_Aires";
+/* ── SETUP SCREEN ── */
+.setup-overlay {
+  position: fixed; inset: 0; background: #f4f5f7;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+.setup-card {
+  background: #fff; border-radius: 16px; padding: 32px;
+  max-width: 440px; width: 100%;
+  box-shadow: 0 4px 24px rgba(0,0,0,.12);
+}
+.setup-card h2 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+.setup-card p  { font-size: 12px; color: #6b7280; margin-bottom: 24px; line-height: 1.6; }
+.setup-card label { display: block; font-size: 11px; font-weight: 700; color: #374151; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+.setup-card input {
+  width: 100%; padding: 9px 12px; border-radius: 8px;
+  border: 1.5px solid #e5e7eb; font-size: 12px; font-family: monospace;
+  margin-bottom: 14px; outline: none; transition: border-color .15s;
+}
+.setup-card input:focus { border-color: #6366f1; }
+.setup-btn {
+  width: 100%; padding: 11px; background: #1a1a2e; color: #fff;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.setup-btn:hover { background: #6366f1; }
+.setup-err { color: #dc2626; font-size: 11px; margin-top: 8px; display: none; }
 
-const COL = {
-  hoy: 1, semana: 2, id: 3, desc: 4, cat: 5, prio: 6, venc: 7,
-  dias: 8, status: 9, tercero: 10, notas: 11,
-  creado: 12, update: 13, cerrado: 14,
+/* ── HEADER ── */
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.header h1 { font-size: 18px; font-weight: 800; }
+.header-right { text-align: right; }
+.sync-info { font-size: 10px; color: #9ca3af; line-height: 1.7; }
+.btn-sm {
+  font-size: 24px; font-weight: 700; padding: 10px 20px;
+  border-radius: 20px; border: 2px solid #e5e7eb;
+  background: #fff; color: #6b7280; cursor: pointer; margin-left: 8px;
+}
+.btn-sm:hover { border-color: #6366f1; color: #6366f1; }
+.date-sub { font-size: 11px; color: #9ca3af; margin-top: 3px; text-transform: capitalize; }
+
+/* ── STATS ── */
+.stats { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.stat { background: #fff; border-radius: 10px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); flex: 1; min-width: 70px; text-align: center; }
+.stat-val { font-size: 24px; font-weight: 800; color: #1a1a2e; line-height: 1; }
+.stat-lbl { font-size: 9px; color: #9ca3af; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-top: 3px; }
+.s-hoy    .stat-val { color: #d97706; }
+.s-semana .stat-val { color: #0891b2; }
+.s-crit   .stat-val { color: #dc2626; }
+.s-venc   .stat-val { color: #7c3aed; }
+
+/* ── SECTIONS ── */
+.section { margin-bottom: 20px; }
+.section-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: #6b7280;
+  margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 1.5px solid #e5e7eb;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.badge { background: #e5e7eb; color: #6b7280; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
+
+/* ── FILTERS ── */
+.filter-bar { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.fbtn {
+  font-size: 18px; font-weight: 600; padding: 10px 20px;
+  border-radius: 20px; border: 2px solid #e5e7eb;
+  background: #fff; color: #6b7280; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; transition: all .12s;
+}
+.fbtn:hover  { border-color: #6366f1; color: #6366f1; }
+.fbtn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+.fcat-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* ── TASK CARDS ── */
+.tasks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; }
+.task-card {
+  background: #fff; border-radius: 8px; padding: 10px 12px;
+  border-left: 3px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+.p-critica { border-left-color: #ef4444; }
+.p-alta    { border-left-color: #f97316; }
+.p-media   { border-left-color: #eab308; }
+.p-baja    { border-left-color: #22c55e; }
+.is-hoy    { background: #fffbeb; }
+.is-venc   { border-left-color: #7c3aed; }
+.task-top  { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.task-desc { font-size: 12.5px; font-weight: 500; color: #111827; line-height: 1.45; }
+.task-controls { display: flex; gap: 2px; flex-shrink: 0; }
+.toggle-btn {
+  background: none; border: none; font-size: 16px; line-height: 1;
+  padding: 2px 3px; cursor: pointer; opacity: .45;
+  transition: opacity .12s, transform .12s;
+}
+.toggle-btn:hover  { opacity: 1; transform: scale(1.18); }
+.toggle-btn.active { opacity: 1; }
+.task-meta { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+.tag-cat    { background: #f3f4f6; color: #374151; }
+.tag-status { background: #f3f4f6; color: #374151; }
+.tag-venc   { background: #fff7ed; color: #c2410c; font-weight: 700; }
+.tag-venc.urgent { background: #fef2f2; color: #dc2626; }
+.tag-terc   { background: #eff6ff; color: #2563eb; }
+.tag-id     { background: #f3f4f6; color: #9ca3af; font-size: 9px; }
+.tag-select {
+  font-size: 10px; font-weight: 500; padding: 2px 6px 2px 7px; border-radius: 20px;
+  border: 1px solid #e5e7eb; background: #f3f4f6; color: #374151;
+  cursor: pointer; outline: none; max-width: 140px;
+}
+.tag-select:hover  { border-color: #6366f1; }
+.tag-select:focus  { border-color: #6366f1; }
+
+/* ── QUICK ADD ── */
+.quick-add { display: flex; gap: 6px; background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); flex-wrap: wrap; }
+.quick-add input[type=text] { flex: 1; min-width: 140px; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: 13px; outline: none; font-family: inherit; }
+.quick-add input[type=text]:focus { border-color: #6366f1; }
+.quick-add select { padding: 8px 10px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: 12px; background: #fff; color: #374151; outline: none; font-family: inherit; }
+.quick-add input[type=date] { padding: 8px 10px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: 12px; color: #374151; outline: none; font-family: inherit; }
+.quick-add button { padding: 8px 16px; border-radius: 8px; border: none; background: #6366f1; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.quick-add button:hover    { background: #4f46e5; }
+.quick-add button:disabled { background: #c7c7d1; cursor: default; }
+
+/* ── EDIT PANEL ── */
+.edit-panel { margin-top: 8px; padding-top: 8px; border-top: 1px solid #f0efeb; display: flex; flex-direction: column; gap: 6px; }
+.edit-panel input, .edit-panel select, .edit-panel textarea {
+  width: 100%; padding: 7px 9px; border-radius: 7px; border: 1.5px solid #e5e7eb;
+  font-size: 12px; font-family: inherit; outline: none; color: #1a1a2e; background: #fff;
+}
+.edit-panel input:focus, .edit-panel select:focus, .edit-panel textarea:focus { border-color: #6366f1; }
+.edit-panel textarea { resize: vertical; min-height: 44px; }
+.edit-row { display: flex; gap: 6px; }
+.edit-row > * { flex: 1; }
+
+/* ── CALENDAR ── */
+.cal-day { margin-bottom: 12px; }
+.cal-day-header { font-size: 10px; font-weight: 800; color: #6366f1; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.cal-event { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 8px; padding: 8px 12px; margin-bottom: 4px; border-left: 3px solid #6366f1; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.cal-time   { font-size: 11px; font-weight: 700; color: #6366f1; min-width: 46px; flex-shrink: 0; }
+.cal-allday { font-size: 10px; color: #9ca3af; font-style: italic; min-width: 46px; flex-shrink: 0; }
+.cal-title  { font-size: 12.5px; color: #111827; }
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex; gap: 4px; margin-bottom: 16px;
+  background: #e5e7eb; border-radius: 10px; padding: 4px;
+}
+.tab-btn {
+  flex: 1; padding: 9px 12px; border: none; border-radius: 7px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  background: transparent; color: #6b7280; transition: all .15s;
+}
+.tab-btn.active { background: #fff; color: #1a1a2e; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.tab-btn:hover:not(.active) { color: #1a1a2e; }
+
+/* ── CAJA STYLES ── */
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin-bottom: 16px;
+}
+@media (max-width: 480px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+.metric-card { background: #fff; border-radius: 10px; border: 0.5px solid #e5e7eb; padding: 14px 16px; }
+.metric-card .label { font-size: 11px; color: #888; margin-bottom: 6px; line-height: 1.4; }
+.metric-card .value { font-size: 20px; font-weight: 600; line-height: 1.1; }
+.metric-card .sub { font-size: 10px; color: #aaa; margin-top: 4px; }
+.metric-card.placeholder { background: transparent; border: none; }
+.value.red   { color: #b83232; }
+.value.amber { color: #8a5000; }
+.value.green { color: #2a6e2a; }
+.caja-card { background: #fff; border-radius: 10px; border: 0.5px solid #e5e7eb; padding: 16px; margin-bottom: 16px; }
+.caja-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.caja-table thead th { font-size: 11px; font-weight: 500; color: #999; text-align: right; padding: 0 0 8px; border-bottom: 0.5px solid #ebebeb; }
+.caja-table thead th:first-child { text-align: left; }
+.caja-table tbody tr { border-bottom: 0.5px solid #f0efeb; }
+.caja-table tbody tr:last-child { border-bottom: none; }
+.caja-table tbody td { padding: 7px 0; text-align: right; }
+.caja-table tbody td:first-child { text-align: left; color: #444; }
+.caja-table tfoot td { padding: 9px 0 0; font-weight: 600; text-align: right; border-top: 0.5px solid #d0cfcc; }
+.caja-table tfoot td:first-child { text-align: left; }
+.neg { color: #b83232; }
+.muted { color: #bbb; }
+.chart-wrap { position: relative; height: 200px; margin-top: 12px; }
+.chart-wrap.tall { height: 280px; }
+.caja-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.alert { border-radius: 8px; padding: 10px 14px; font-size: 12px; line-height: 1.5; }
+.alert.danger  { background: #fdf0f0; color: #9b2020; border: 0.5px solid #f5c6c6; }
+.alert.warning { background: #fdf6e8; color: #7a4500; border: 0.5px solid #f0d898; }
+.section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6b7280; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1.5px solid #e5e7eb; }
+.caja-meta { font-size: 11px; color: #9ca3af; margin-bottom: 16px; }
+
+/* ── STATES ── */
+.empty   { color: #9ca3af; font-size: 12px; font-style: italic; padding: 6px 0; }
+.loading { text-align: center; color: #9ca3af; padding: 50px 0; font-size: 13px; }
+.err-box { background: #fef2f2; color: #dc2626; border-radius: 8px; padding: 12px; font-size: 12px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- Setup screen -->
+<div class="setup-overlay" id="setup" style="display:none">
+  <div class="setup-card">
+    <h2>📊 Dashboard — Configuración</h2>
+    <p>Primera vez o nueva configuración. Ingresá la URL y el token del Apps Script para conectar con tus tareas.</p>
+    <label>URL del Apps Script</label>
+    <input id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+    <label>Token secreto</label>
+    <input id="cfg-token" type="password" placeholder="Tu token">
+    <button class="setup-btn" onclick="saveConfig()">Conectar</button>
+    <div class="setup-err" id="cfg-err"></div>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main" style="display:none">
+  <div class="header">
+    <div>
+      <h1>📊 Dashboard</h1>
+      <div class="date-sub" id="date-line"></div>
+    </div>
+    <div class="header-right">
+      <div class="sync-info" id="sync-info">Cargando...</div>
+      <button class="btn-sm" onclick="refreshActive()" title="Actualizar">↻</button>
+      <button class="btn-sm" onclick="showSetup()" title="Cambiar configuración">⚙</button>
+    </div>
+  </div>
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button id="tab-pendientes" class="tab-btn active" onclick="switchTab('pendientes')">📋 Pendientes</button>
+    <button id="tab-caja"       class="tab-btn"        onclick="switchTab('caja')">💰 Caja</button>
+  </div>
+  <!-- Pendientes view -->
+  <div id="view-pendientes">
+    <div id="app"><div class="loading">⏳ Cargando...</div></div>
+  </div>
+  <!-- Caja view -->
+  <div id="view-caja" style="display:none">
+    <div id="caja-app"><div class="loading">⏳ Cargando caja...</div></div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+const CFG_KEY = 'pendientes_cfg';
+const CAJA_JSON_URL = 'https://raw.githubusercontent.com/ssocas/Pendientes-dashboard/main/caja_dashboard.json';
+let CFG = null;
+let activeTab = 'pendientes';
+let cajaLoaded = false;
+let cajaCharts = {};
+
+function loadConfig() {
+  try { CFG = JSON.parse(localStorage.getItem(CFG_KEY)); } catch(e) { CFG = null; }
+  return CFG && CFG.url && CFG.token;
+}
+function saveConfig() {
+  const url   = document.getElementById('cfg-url').value.trim();
+  const token = document.getElementById('cfg-token').value.trim();
+  const err   = document.getElementById('cfg-err');
+  if (!url || !token) { err.textContent = 'Completá ambos campos.'; err.style.display='block'; return; }
+  CFG = { url, token };
+  localStorage.setItem(CFG_KEY, JSON.stringify(CFG));
+  err.style.display = 'none';
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('main').style.display  = 'block';
+  loadData();
+}
+function showSetup() {
+  if (CFG) {
+    document.getElementById('cfg-url').value   = CFG.url;
+    document.getElementById('cfg-token').value = CFG.token;
+  }
+  document.getElementById('main').style.display  = 'none';
+  document.getElementById('setup').style.display = 'flex';
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-pendientes').className = 'tab-btn' + (tab === 'pendientes' ? ' active' : '');
+  document.getElementById('tab-caja').className       = 'tab-btn' + (tab === 'caja'       ? ' active' : '');
+  document.getElementById('view-pendientes').style.display = tab === 'pendientes' ? 'block' : 'none';
+  document.getElementById('view-caja').style.display       = tab === 'caja'       ? 'block' : 'none';
+  if (tab === 'caja' && !cajaLoaded) loadCaja();
+}
+function refreshActive() {
+  if (activeTab === 'pendientes') {
+    loadData();
+  } else {
+    cajaLoaded = false;
+    loadCaja();
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+const CAT_COLORS = {
+  'Estudio Trivelloni':      '#1565C0',
+  'Conceptual Brasil':       '#00897B',
+  'Inversiones Financieras': '#7B1FA2',
+  'Inversiones Real Estate': '#1A237E',
+  'Campo':                   '#558B2F',
+  'Finanzas Personales':     '#F57F17',
+  'Casa y Autos':            '#4E342E',
+  'Otros':                   '#546E7A',
 };
+const CAT_ORDER = Object.keys(CAT_COLORS);
 
-// Mismo orden que CAT_ORDER en index.html y CATEGORIAS en pendientes_email_sync.py
-const CAT_ORDER = [
-  "Estudio Trivelloni", "Conceptual Brasil", "Inversiones Financieras",
-  "Inversiones Real Estate", "Campo", "Finanzas Personales", "Casa y Autos", "Otros",
-];
-const PRIO_ORDER = { "🔴 Crítica": 1, "🟠 Alta": 2, "🟡 Media": 3, "🟢 Baja": 4 };
+let ALL_TASKS = [], CAL_EVENTS = [], activeCat = 'Todas', editingId = null;
+const PRIO_OPTIONS   = ['🔴 Crítica', '🟠 Alta', '🟡 Media', '🟢 Baja'];
+const STATUS_OPTIONS = ['🆕 Nuevo', '🔄 Comenzado', '👁 Seguimiento', '📌 Largo Plazo', '✅ Terminado'];
 
-// Columna donde se escribe el texto del título de cada sección de
-// categoría (ej. "  ESTUDIO TRIVELLONI"). Se mantiene fija en la
-// columna A a propósito, INDEPENDIENTE de COL.id — así, si el día de
-// mañana se vuelve a reordenar alguna columna, los títulos de sección
-// no "siguen" a la columna ID, sino que quedan siempre pegados a la
-// izquierda como es visualmente más prolijo.
-const HEADER_MARKER_COL = 1;
+document.getElementById('date-line').textContent =
+  new Date().toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
-// ── HANDLERS ─────────────────────────────────────────────────
-function doGet(e) {
-  try {
-    if ((e.parameter.token || "") !== SECRET_TOKEN) return respond({ error: "Unauthorized" });
-    const action = e.parameter.action || "get_tasks";
-    if (action === "get_tasks")    return respond(getTasks());
-    if (action === "get_calendar") return respond(getCalendar());
-    if (action === "get_all")      return respond(getAll());
-    return respond({ error: "Unknown action: " + action });
-  } catch (err) { return respond({ error: err.toString() }); }
+// ── NORMALIZE ─────────────────────────────────────────────────
+function normPrio(r) {
+  if (!r) return '';
+  if (r.includes('rítica') || r.includes('ritica')) return '🔴 Crítica';
+  if (r.includes('Alta'))   return '🟠 Alta';
+  if (r.includes('Media'))  return '🟡 Media';
+  if (r.includes('Baja'))   return '🟢 Baja';
+  return r;
+}
+function normStatus(r) {
+  if (!r) return '';
+  if (r.includes('Terminado'))   return '✅ Terminado';
+  if (r.includes('Comenzado'))   return '🔄 Comenzado';
+  if (r.includes('Seguimiento')) return '👁 Seguimiento';
+  if (r.includes('Largo'))       return '📌 Largo Plazo';
+  if (r.includes('Nuevo'))       return '🆕 Nuevo';
+  return r;
 }
 
-function doPost(e) {
-  try {
-    const body = JSON.parse(e.postData.contents);
-    if ((body.token || "") !== SECRET_TOKEN) return respond({ error: "Unauthorized" });
-    const action = body.action || "apply_changes";
-    if (action === "apply_changes") return respond(applyChanges(body.changes || []));
-    return respond({ error: "Unknown action: " + action });
-  } catch (err) { return respond({ error: err.toString() }); }
+// ── DATE UTILS ────────────────────────────────────────────────
+function daysFrom(dateStr) {
+  if (!dateStr) return null;
+  const [y,m,d] = dateStr.slice(0,10).split('-').map(Number);
+  const target = new Date(y, m-1, d);
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((target - now) / 864e5);
+}
+function labelDays(diff) {
+  if (diff === null) return '';
+  if (diff === 0)  return 'Hoy';
+  if (diff === 1)  return 'Mañana';
+  if (diff < 0)   return `Vencida hace ${Math.abs(diff)}d`;
+  return `en ${diff}d`;
+}
+function dayLabel(dateStr) {
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt   = new Date(y, m-1, d);
+  const now  = new Date(); now.setHours(0,0,0,0);
+  const diff = Math.round((dt - now) / 864e5);
+  if (diff === 0) return 'Hoy';
+  if (diff === 1) return 'Mañana';
+  return dt.toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'short'});
 }
 
-function respond(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+// ── RENDER ────────────────────────────────────────────────────
+function prioCls(p) {
+  if (!p) return '';
+  if (p.includes('rítica')) return 'p-critica';
+  if (p.includes('Alta'))   return 'p-alta';
+  if (p.includes('Media'))  return 'p-media';
+  if (p.includes('Baja'))   return 'p-baja';
+  return '';
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function prioSelect(t) {
+  const opts = PRIO_OPTIONS.map(o =>
+    `<option value="${esc(o)}"${o===t.prio?' selected':''}>${esc(o)}</option>`).join('');
+  return `<select class="tag-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();changePrio(${t.id}, this.value)">${opts}</select>`;
+}
+function statusSelect(t) {
+  const opts = STATUS_OPTIONS.map(o =>
+    `<option value="${esc(o)}"${o===t.status?' selected':''}>${esc(o)}</option>`).join('');
+  return `<select class="tag-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();changeStatus(${t.id}, this.value)">${opts}</select>`;
 }
 
-// ── GET ALL (tareas + calendario en una sola llamada) ─────────
-function getAll() {
-  const tasks = getTasks();
-  const cal   = getCalendar();
-  return {
-    version:   2,
-    last_sync: new Date().toISOString(),
-    source:    "gsheet",
-    count:     tasks.count,
-    tasks:     tasks.tasks,
-    calendar:  cal.events,
-  };
+function renderTask(t, extra='', controls=[]) {
+  const isHoy = t.hoy === '⭐';
+  let vTag = '';
+  if (t.venc) {
+    const diff = daysFrom(t.venc);
+    const urg  = diff !== null && diff <= 2;
+    vTag = `<span class="tag tag-venc${urg?' urgent':''}" title="${esc(t.venc)}">⏰ ${labelDays(diff)}</span>`;
+  }
+  const cColor  = CAT_COLORS[t.cat] || '#666';
+  const tercTag = t.tercero ? `<span class="tag tag-terc">👤 ${esc(t.tercero)}</span>` : '';
+
+  let controlsHtml = '';
+  if (controls.includes('star')) {
+    const active = t.hoy === '⭐';
+    controlsHtml += `<button class="toggle-btn${active?' active':''}" onclick="event.stopPropagation();toggleHoy(${t.id})" title="${active?'Quitar de Hoy':'Marcar para Hoy'}">${active?'⭐':'☆'}</button>`;
+  }
+  if (controls.includes('bookmark')) {
+    const active = t.semana === '✅';
+    controlsHtml += `<button class="toggle-btn${active?' active':''}" onclick="event.stopPropagation();toggleSemana(${t.id})" title="${active?'Quitar del radar semanal':'Agregar al radar semanal'}">${active?'🔖':'📑'}</button>`;
+  }
+  if (controls.includes('edit')) {
+    const open = editingId === t.id;
+    controlsHtml += `<button class="toggle-btn${open?' active':''}" onclick="event.stopPropagation();toggleEdit(${t.id})" title="${open?'Cerrar edición':'Editar'}">✎</button>`;
+  }
+  const controlsBlock = controlsHtml ? `<div class="task-controls">${controlsHtml}</div>` : '';
+
+  const editPanel = editingId === t.id ? `
+    <div class="edit-panel">
+      <input type="text" value="${esc(t.desc)}" placeholder="Descripción"
+        onclick="event.stopPropagation()" onblur="event.stopPropagation();saveField(${t.id},'desc',this.value)">
+      <div class="edit-row">
+        <select onclick="event.stopPropagation()" onchange="event.stopPropagation();saveField(${t.id},'cat',this.value)">
+          ${CAT_ORDER.map(c => `<option value="${esc(c)}"${c===t.cat?' selected':''}>${esc(c)}</option>`).join('')}
+        </select>
+        <input type="date" value="${t.venc ? esc(t.venc.slice(0,10)) : ''}"
+          onclick="event.stopPropagation()" onchange="event.stopPropagation();saveField(${t.id},'venc',this.value)">
+      </div>
+      <input type="text" value="${esc(t.tercero||'')}" placeholder="Tercero"
+        onclick="event.stopPropagation()" onblur="event.stopPropagation();saveField(${t.id},'tercero',this.value)">
+      <textarea placeholder="Notas" onclick="event.stopPropagation()"
+        onblur="event.stopPropagation();saveField(${t.id},'notas',this.value)">${esc(t.notas||'')}</textarea>
+    </div>` : '';
+
+  return `<div class="task-card ${prioCls(t.prio)}${isHoy?' is-hoy':''}${extra}">
+    <div class="task-top">
+      <div class="task-desc">${esc(t.desc)}</div>
+      ${controlsBlock}
+    </div>
+    <div class="task-meta">
+      <span class="tag tag-cat" style="border-left:2px solid ${cColor}">${esc(t.cat)}</span>
+      ${prioSelect(t)}
+      ${statusSelect(t)}
+      ${vTag}${tercTag}
+      <span class="tag tag-id">#${t.id}</span>
+    </div>
+    ${editPanel}
+  </div>`;
 }
 
-// ── LECTURA DE TAREAS ─────────────────────────────────────────
-function getTasks() {
-  const ss     = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet  = ss.getSheetByName(PENDIENTES_TAB);
-  const values = sheet.getDataRange().getValues();
-  const tasks  = [];
+function renderCalendar(events) {
+  if (!events || !events.length) return '<div class="empty">Sin eventos en los próximos 7 días.</div>';
+  const byDate = {};
+  events.forEach(e => { (byDate[e.date] = byDate[e.date]||[]).push(e); });
+  return Object.keys(byDate).sort().map(date => {
+    const evs = byDate[date].map(e =>
+      `<div class="cal-event">
+        ${e.time ? `<span class="cal-time">🕐 ${e.time}</span>` : `<span class="cal-allday">Todo el día</span>`}
+        <span class="cal-title">${esc(e.title)}</span>
+      </div>`).join('');
+    return `<div class="cal-day">
+      <div class="cal-day-header">📅 ${dayLabel(date)}</div>${evs}
+    </div>`;
+  }).join('');
+}
 
-  for (let i = 3; i < values.length; i++) {
-    const row = values[i];
-    const id  = row[COL.id - 1];
-    if (id === "" || id === null || id === undefined) continue;
-    if (typeof id !== "number") continue;
+function buildFilterBar(tasks) {
+  const used = CAT_ORDER.filter(c => tasks.some(t => t.cat === c));
+  return ['Todas', ...used].map(c => {
+    const cnt = c === 'Todas' ? tasks.length : tasks.filter(t => t.cat === c).length;
+    const col = c === 'Todas' ? '#6366f1' : (CAT_COLORS[c]||'#666');
+    const dot = c === 'Todas' ? '' : `<span class="fcat-dot" style="background:${col}"></span>`;
+    return `<button class="fbtn${c===activeCat?' active':''}" onclick="setFilter('${esc(c)}')">${dot}${esc(c)} (${cnt})</button>`;
+  }).join('');
+}
 
-    tasks.push({
-      id:      id,
-      desc:    row[COL.desc    - 1] || "",
-      cat:     row[COL.cat     - 1] || "",
-      prio:    row[COL.prio    - 1] || "",
-      venc:    fmtDate(row[COL.venc    - 1]),
-      status:  row[COL.status  - 1] || "",
-      tercero: row[COL.tercero - 1] || "",
-      notas:   row[COL.notas   - 1] || "",
-      creado:  fmtDate(row[COL.creado  - 1]),
-      update:  fmtDate(row[COL.update  - 1]),
-      cerrado: fmtDate(row[COL.cerrado - 1]),
-      hoy:     row[COL.hoy     - 1] || "☆",
-      semana:  row[COL.semana  - 1] || "—",
+function setFilter(cat) { activeCat = cat; renderAll(); }
+
+function renderAll() {
+  const tasks   = ALL_TASKS;
+  const hoy     = tasks.filter(t => t.hoy === '⭐');
+  const semana  = tasks.filter(t => t.semana === '✅');
+  // El radar de la semana muestra las marcadas "semana" que no estén YA
+  // en "hoy", para no duplicar la tarjeta en las dos secciones.
+  const semanaOnly = semana.filter(t => t.hoy !== '⭐');
+  const restoVenc  = tasks.filter(t => t.hoy !== '⭐');
+  const vencen     = restoVenc.filter(t => { const d=daysFrom(t.venc); return d!==null && d>=0 && d<=7; });
+  const criticos   = tasks.filter(t => (t.prio||'').includes('rítica')).length;
+  const priOrd = {'🔴 Crítica':1,'🟠 Alta':2,'🟡 Media':3,'🟢 Baja':4};
+  const filtered = (activeCat==='Todas' ? tasks : tasks.filter(t=>t.cat===activeCat))
+    .sort((a,b) => {
+      const ci = CAT_ORDER.indexOf(a.cat) - CAT_ORDER.indexOf(b.cat);
+      return ci !== 0 ? ci : (priOrd[normPrio(a.prio)]||9)-(priOrd[normPrio(b.prio)]||9);
     });
-  }
 
-  return { version: 1, last_sync: new Date().toISOString(), source: "gsheet", count: tasks.length, tasks };
+  let html = `<div class="stats">
+    <div class="stat"><div class="stat-val">${tasks.length}</div><div class="stat-lbl">Total activos</div></div>
+    <div class="stat s-hoy"><div class="stat-val">${hoy.length}</div><div class="stat-lbl">⭐ Hoy</div></div>
+    <div class="stat s-semana"><div class="stat-val">${semana.length}</div><div class="stat-lbl">🔖 Semana</div></div>
+    <div class="stat s-crit"><div class="stat-val">${criticos}</div><div class="stat-lbl">🔴 Críticos</div></div>
+    <div class="stat s-venc"><div class="stat-val">${vencen.length}</div><div class="stat-lbl">⏰ 7 días</div></div>
+  </div>`;
+
+  html += `<div class="quick-add">
+    <input type="text" id="qa-desc" placeholder="Nueva tarea..." onkeydown="if(event.key==='Enter'){event.preventDefault();quickAdd();}">
+    <select id="qa-cat">${CAT_ORDER.map(c => `<option value="${esc(c)}"${c==='Otros'?' selected':''}>${esc(c)}</option>`).join('')}</select>
+    <select id="qa-prio">${PRIO_OPTIONS.map(o => `<option value="${esc(o)}"${o==='🟡 Media'?' selected':''}>${esc(o)}</option>`).join('')}</select>
+    <input type="date" id="qa-venc">
+    <button id="qa-btn" onclick="quickAdd()">+ Agregar</button>
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#d97706"></span>Tareas de hoy<span class="badge">${hoy.length}</span></div>
+    ${hoy.length ? hoy.map(t=>renderTask(t,'',['star','bookmark','edit'])).join('') : '<div class="empty">Sin tareas marcadas para hoy. Usá ⭐ en el radar de la semana para agregar.</div>'}
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#22c55e"></span>Radar de la semana<span class="badge">${semanaOnly.length}</span></div>
+    ${semanaOnly.length ? semanaOnly.map(t=>renderTask(t,'',['star','bookmark','edit'])).join('') : '<div class="empty">Sin tareas en el radar semanal (fuera de las ya marcadas para hoy).</div>'}
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#7c3aed"></span>Vencen en los próximos 7 días<span class="badge">${vencen.length}</span></div>
+    ${vencen.length ? vencen.map(t=>renderTask(t,' is-venc',['edit'])).join('') : '<div class="empty">Sin vencimientos próximos.</div>'}
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#6366f1"></span>Agenda próximos 7 días<span class="badge">${CAL_EVENTS.length}</span></div>
+    ${renderCalendar(CAL_EVENTS)}
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#9ca3af"></span>Todos los pendientes<span class="badge">${filtered.length}</span></div>
+    <div class="filter-bar">${buildFilterBar(tasks)}</div>
+    <div class="tasks-grid">${filtered.length ? filtered.map(t=>renderTask(t,'',['bookmark','edit'])).join('') : '<div class="empty">Sin tareas en esta categoría.</div>'}</div>
+  </div>`;
+
+  document.getElementById('app').innerHTML = html;
 }
 
-function fmtDate(val) {
-  if (!val || val === "") return null;
-  if (val instanceof Date) return Utilities.formatDate(val, TZ, "yyyy-MM-dd");
-  return String(val);
-}
-
-// ── LECTURA DE CALENDARIO (próximos 7 días, todos los calendarios) ──
-function getCalendar() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(today);
-  end.setDate(end.getDate() + 7);
-  end.setHours(23, 59, 59, 0);
-
-  const EXCLUDE = ["alarm notification"];
-  const allEvents = [];
-
-  try {
-    const calendars = CalendarApp.getAllCalendars();
-    for (const cal of calendars) {
-      const events = cal.getEvents(today, end);
-      for (const ev of events) {
-        const title = ev.getTitle() || "";
-        if (EXCLUDE.some(ex => title.toLowerCase().includes(ex))) continue;
-        const isAllDay = ev.isAllDayEvent();
-        allEvents.push({
-          title,
-          date:   Utilities.formatDate(ev.getStartTime(), TZ, "yyyy-MM-dd"),
-          time:   isAllDay ? "" : Utilities.formatDate(ev.getStartTime(), TZ, "HH:mm"),
-          allDay: isAllDay,
-        });
-      }
-    }
-  } catch (err) {
-    return { events: [], error: err.toString() };
-  }
-
-  allEvents.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-  return { events: allEvents };
-}
-
-// ── FORMATO DE FILAS NUEVAS ─────────────────────────────────────
-// Copia el formato (bordes, fuente, formato de fecha, etc.) de una fila
-// de TAREA real a una fila recién creada, para que quede prolijo e igual
-// al resto. OJO: la fila 4 ya NO es siempre una tarea (puede ser el header
-// de la primera categoría), así que el template se busca dinámicamente
-// como la primera fila con ID numérico, en vez de asumir una fila fija.
-function getTaskTemplateRow(sheet) {
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 4) return null;
-  const ids = sheet.getRange(4, COL.id, lastRow - 3, 1).getValues();
-  for (let i = 0; i < ids.length; i++) {
-    if (typeof ids[i][0] === "number") return 4 + i;
-  }
-  return null;
-}
-
-function applyRowFormat(sheet, row, templateRow) {
-  try {
-    const tRow = templateRow || getTaskTemplateRow(sheet);
-    if (!tRow || row === tRow) return;
-    const numCols = sheet.getLastColumn();
-    sheet.getRange(tRow, 1, 1, numCols)
-      .copyTo(sheet.getRange(row, 1, 1, numCols), { formatOnly: true });
-  } catch (err) {
-    // si falla la copia de formato no debe interrumpir el resto del flujo
-  }
-}
-
-// ── ORDEN POR CATEGORÍA Y PRIORIDAD (con headers de sección) ────
-// Reordena físicamente las filas de Pendientes (desde la fila 4).
-// La hoja tiene, además de las filas de tarea, filas "header" de
-// categoría (texto con el nombre de la categoría en la columna ID,
-// el resto de las celdas vacías) que deben quedar SIEMPRE inmediatamente
-// antes de las tareas de esa categoría. Por eso no alcanza con un
-// Range.sort() simple: hay que detectar los headers, agrupar las tareas
-// por categoría, y reconstruir el bloque completo en el orden correcto.
-function sortPendientes(sheet) {
-  const lastRow = sheet.getLastRow();
-  const numRows = lastRow - 3;
-  if (numRows < 2) return; // nada que ordenar
-
-  const numCols = sheet.getLastColumn();
-
-  try {
-    const allValues = sheet.getRange(4, 1, numRows, numCols).getValues();
-
-    const isHeaderRow = (row) => {
-      const marker = row[HEADER_MARKER_COL - 1];
-      const desc = row[COL.desc - 1];
-      const cat  = row[COL.cat  - 1];
-      return typeof marker !== "number" && marker !== "" && marker !== null && marker !== undefined &&
-             (desc === "" || desc === null || desc === undefined) &&
-             (cat  === "" || cat  === null || cat  === undefined);
-    };
-
-    const matchCategory = (headerText) => {
-      const t = String(headerText).trim().toUpperCase();
-      for (const c of CAT_ORDER) {
-        if (c.toUpperCase() === t) return c;
-      }
-      return null;
-    };
-
-    // Capturar el formato ACTUAL de una fila header y de una fila de tarea
-    // real, clonándolos a un área temporal ("scratch") fuera del rango de
-    // datos. Esto es clave: si copiáramos el formato directamente desde una
-    // fila del bloque (p.ej. la fila 4), esa fila podría terminar pisada
-    // por el nuevo contenido (ej. un header) ANTES de que la usemos como
-    // fuente para las demás filas, contaminando todo con el formato
-    // equivocado (eso es lo que pasó: el header pisó la fila 4 y después
-    // todas las tareas copiaron formato "de la fila 4", que ya era el
-    // header azul). Clonando a un scratch ANTES de tocar nada, evitamos
-    // ese problema de orden.
-    let headerSrcRow = null;
-    let taskSrcRow   = null;
-    for (let i = 0; i < allValues.length; i++) {
-      const abs = 4 + i;
-      if (isHeaderRow(allValues[i])) {
-        if (headerSrcRow === null) headerSrcRow = abs;
-      } else if (taskSrcRow === null) {
-        taskSrcRow = abs;
-      }
-      if (headerSrcRow !== null && taskSrcRow !== null) break;
-    }
-
-    const SCRATCH_HEADER_ROW = lastRow + 5;
-    const SCRATCH_TASK_ROW   = lastRow + 6;
-    if (headerSrcRow) {
-      sheet.getRange(headerSrcRow, 1, 1, numCols)
-        .copyTo(sheet.getRange(SCRATCH_HEADER_ROW, 1, 1, numCols), { formatOnly: true });
-    }
-    if (taskSrcRow) {
-      sheet.getRange(taskSrcRow, 1, 1, numCols)
-        .copyTo(sheet.getRange(SCRATCH_TASK_ROW, 1, 1, numCols), { formatOnly: true });
-    }
-
-    const tasksByCat = {};
-    const headerTextByCat = {};
-    const others = []; // filas que no matchean ninguna categoría conocida
-
-    for (const row of allValues) {
-      if (isHeaderRow(row)) {
-        const cat = matchCategory(row[HEADER_MARKER_COL - 1]);
-        if (cat) headerTextByCat[cat] = row[HEADER_MARKER_COL - 1];
-        else others.push(row);
-        continue;
-      }
-      const cat = row[COL.cat - 1];
-      if (CAT_ORDER.includes(cat)) {
-        (tasksByCat[cat] = tasksByCat[cat] || []).push(row);
-      } else {
-        others.push(row);
-      }
-    }
-
-    for (const cat in tasksByCat) {
-      tasksByCat[cat].sort((a, b) =>
-        (PRIO_ORDER[a[COL.prio - 1]] || 9) - (PRIO_ORDER[b[COL.prio - 1]] || 9));
-    }
-
-    const finalRows = [];
-    const headerRowIdx = []; // índices (dentro de finalRows) que son headers
-
-    for (const cat of CAT_ORDER) {
-      const tasks = tasksByCat[cat] || [];
-      const hasHeader = headerTextByCat.hasOwnProperty(cat);
-      if (!tasks.length && !hasHeader) continue;
-
-      const headerText = hasHeader ? headerTextByCat[cat] : ("  " + cat.toUpperCase());
-      const headerRow = new Array(numCols).fill("");
-      headerRow[HEADER_MARKER_COL - 1] = headerText;
-
-      headerRowIdx.push(finalRows.length);
-      finalRows.push(headerRow);
-      for (const t of tasks) finalRows.push(t);
-    }
-
-    for (const row of others) finalRows.push(row);
-
-    // Por construcción finalRows debe tener el mismo total de filas que
-    // allValues (cada fila original se reclasificó exactamente una vez).
-    sheet.getRange(4, 1, finalRows.length, numCols).setValues(finalRows);
-
-    // Reaplicar formato a cada fila usando EXCLUSIVAMENTE las copias en el
-    // área scratch (nunca una fila del bloque de datos, que ya fue
-    // sobreescrita más arriba).
-    const headerSet = new Set(headerRowIdx);
-    for (let i = 0; i < finalRows.length; i++) {
-      const row = 4 + i;
-      const srcRow = headerSet.has(i) ? SCRATCH_HEADER_ROW : SCRATCH_TASK_ROW;
-      const hasSrc = headerSet.has(i) ? headerSrcRow : taskSrcRow;
-      if (!hasSrc) continue;
-      sheet.getRange(srcRow, 1, 1, numCols)
-        .copyTo(sheet.getRange(row, 1, 1, numCols), { formatOnly: true });
-    }
-
-    // Limpiar el área scratch (contenido y formato).
-    sheet.getRange(SCRATCH_HEADER_ROW, 1, 2, numCols).clear();
-  } catch (err) {
-    // si falla el reordenamiento, no debe interrumpir el resto del flujo
-  }
-}
-
-// ── ARCHIVO ───────────────────────────────────────────────────
-function getOrCreateArchivo(ss, pendientesSheet) {
-  let archivo = ss.getSheetByName("Archivo");
-  if (!archivo) {
-    archivo = ss.insertSheet("Archivo");
-    // Copiar fila de encabezados desde Pendientes
-    const headers = pendientesSheet.getRange(3, 1, 1, pendientesSheet.getLastColumn()).getValues();
-    archivo.getRange(1, 1, 1, headers[0].length).setValues(headers);
-    archivo.getRange(1, 1, 1, headers[0].length).setFontWeight("bold");
-  }
-  return archivo;
-}
-
-// ── MIGRACIÓN ÚNICA: Hoy/Semana a columnas A/B ─────────────────
-// Corre UNA VEZ a mano desde el editor (▶ Ejecutar → migrarHoySemana).
-// Mueve la columna "Hoy" (antes la última, columna 13) a la posición A,
-// y crea una nueva columna B llamada "Semana" (que arranca con el mismo
-// valor que tenía "Hoy", ya que conceptualmente eran las tareas marcadas
-// hasta ahora). Es idempotente: si detecta que ya migró (A1="Hoy" y
-// B1="Semana" en la fila de encabezado), no hace nada.
-// IMPORTANTE: hacer una copia de respaldo de la planilla antes de correr
-// esto (Archivo → Hacer una copia), y revisar visualmente las filas 1-2
-// (título / banner) después de correr, por si el insertColumnsBefore
-// las descuadra.
-function migrarColumnaHojaHoySemana(sheet, headerRow) {
-  if (!sheet) return;
-  const a1ya = String(sheet.getRange(headerRow, 1).getValue());
-  const b1ya = String(sheet.getRange(headerRow, 2).getValue());
-  const yaMigrado = a1ya.includes("Hoy") && b1ya.includes("Semana");
-  if (yaMigrado) { Logger.log(`${sheet.getName()}: ya migrado (A="${a1ya}", B="${b1ya}"), no se toca.`); return; }
-
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-
-  // NO usar lastCol como "la columna Hoy" — si la hoja tiene columnas
-  // extra con datos sueltos al final (pasó: una columna N con "_n"/"6"/"5"
-  // sin relación con Hoy), lastCol queda más grande que la posición real
-  // de "Hoy" y la migración lee/borra la columna equivocada (esto pasó en
-  // el primer intento). En su lugar, se busca por contenido: la columna
-  // cuyo encabezado contiene la palabra "Hoy" (sin importar mayúsculas,
-  // emojis u otro texto alrededor, ej. "⭐ Hoy").
-  const headerVals = sheet.getRange(headerRow, 1, 1, lastCol).getValues()[0];
-  const matches = [];
-  for (let c = 1; c <= headerVals.length; c++) {
-    if (String(headerVals[c - 1]).toLowerCase().includes("hoy")) matches.push(c);
-  }
-  if (matches.length === 0) {
-    Logger.log(`${sheet.getName()}: NO se encontró ninguna columna cuyo encabezado contenga "Hoy" en la fila ${headerRow}. Abortando sin tocar nada — revisar manualmente.`);
-    return;
-  }
-  if (matches.length > 1) {
-    Logger.log(`${sheet.getName()}: se encontraron VARIAS columnas con "Hoy" en el encabezado (cols ${matches.join(", ")}). Abortando sin tocar nada — revisar manualmente cuál es la correcta.`);
-    return;
-  }
-  const oldHoyCol = matches[0];
-
-  // Guardar los valores actuales de la columna Hoy antes de mover nada
-  const hoyValues = sheet.getRange(1, oldHoyCol, lastRow, 1).getValues();
-
-  // Chequeo de sanidad: contar cuántos ✅ hay en la columna detectada,
-  // para poder confirmar en el log que se encontró la columna correcta
-  // antes de confiar en el resto de la migración.
-  const checks = hoyValues.filter(r => r[0] === "✅").length;
-  Logger.log(`${sheet.getName()}: columna "Hoy" detectada en col ${oldHoyCol} (letra ${columnToLetter(oldHoyCol)}, encabezado "${headerVals[oldHoyCol - 1]}"), con ${checks} tarea(s) marcadas ✅.`);
-
-  sheet.insertColumnsBefore(1, 2);
-
-  // Escribir encabezados (mismo estilo emoji que ya usabas)
-  sheet.getRange(headerRow, 1).setValue("⭐ Hoy");
-  sheet.getRange(headerRow, 2).setValue("🔖 Semana");
-
-  // Volcar los valores viejos de "Hoy" en AMBAS columnas nuevas (Hoy y
-  // Semana), fila por fila, a partir de la primera fila de datos.
-  const firstDataRow = headerRow + 1;
-  if (lastRow >= firstDataRow) {
-    const n = lastRow - firstDataRow + 1;
-    const colHoy = [], colSemana = [];
-    for (let i = firstDataRow - 1; i < firstDataRow - 1 + n; i++) {
-      const v = hoyValues[i] ? hoyValues[i][0] : "";
-      const filled = v || "—";
-      colHoy.push([filled]);
-      colSemana.push([filled]);
-    }
-    sheet.getRange(firstDataRow, 1, n, 1).setValues(colHoy);
-    sheet.getRange(firstDataRow, 2, n, 1).setValues(colSemana);
-  }
-
-  // Borrar la columna vieja de Hoy (ahora desplazada 2 lugares a la derecha)
-  sheet.deleteColumn(oldHoyCol + 2);
-
-  Logger.log(`${sheet.getName()}: migrado OK. Revisar manualmente filas 1-${headerRow} (títulos) por si quedó algo descuadrado.`);
-}
-
-// ── DIAGNÓSTICO (solo lectura, no modifica nada) ────────────────
-// Corré esto si migrarHoySemana dice que no encontró la columna "Hoy".
-// Loguea el contenido literal de las filas 1-3 de Pendientes y la fila 1
-// de Archivo, columna por columna, para ver exactamente qué texto tiene
-// cada encabezado (puede haber espacios, mayúsculas, emojis, etc. que no
-// coinciden con el "Hoy" exacto que está buscando el script).
-function diagnosticoHeaders() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const pend = ss.getSheetByName(PENDIENTES_TAB);
-  const lastColPend = pend.getLastColumn();
-
-  // Filas 1-4 de Pendientes, mostrando TODAS las celdas (incluso vacías)
-  // para distinguir "vacío" de "no se imprimió".
-  for (let row = 1; row <= 4; row++) {
-    const vals = pend.getRange(row, 1, 1, lastColPend).getValues()[0];
-    vals.forEach((v, idx) => {
-      Logger.log(`Pendientes fila ${row}, col ${idx + 1} (${columnToLetter(idx + 1)}): "${v}"`);
-    });
-  }
-
-  // Columna N completa (filas 1-8) para ver si hay datos residuales
-  const nVals = pend.getRange(1, 14, 8, 1).getValues();
-  nVals.forEach((v, i) => Logger.log(`Pendientes col N, fila ${i + 1}: "${v[0]}"`));
-
-  const archivo = ss.getSheetByName("Archivo");
-  if (archivo) {
-    const lastColArch = archivo.getLastColumn();
-    const lastRowArch = archivo.getLastRow();
-    Logger.log(`Archivo: lastRow=${lastRowArch}, lastCol=${lastColArch}`);
-    for (let row = 1; row <= Math.min(4, lastRowArch); row++) {
-      const vals = archivo.getRange(row, 1, 1, lastColArch).getValues()[0];
-      vals.forEach((v, idx) => {
-        Logger.log(`Archivo fila ${row}, col ${idx + 1} (${columnToLetter(idx + 1)}): "${v}"`);
-      });
-    }
-  }
-}
-
-function columnToLetter(col) {
-  let letter = "";
-  while (col > 0) {
-    const rem = (col - 1) % 26;
-    letter = String.fromCharCode(65 + rem) + letter;
-    col = Math.floor((col - 1) / 26);
-  }
-  return letter;
-}
-
-function migrarHoySemana() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  migrarColumnaHojaHoySemana(ss.getSheetByName(PENDIENTES_TAB), 3);
-  // OJO: en "Archivo" la fila 1 es un título ("ARCHIVO — TAREAS
-  // COMPLETADAS"), los encabezados reales están en la fila 2.
-  const archivo = ss.getSheetByName("Archivo");
-  if (archivo) migrarColumnaHojaHoySemana(archivo, 2);
-  SpreadsheetApp.flush();
-  Logger.log("Migración completa.");
-}
-
-// ── LIMPIEZA: títulos de categoría mal ubicados en columna C ───
-// Antes del fix de HEADER_MARKER_COL, sortPendientes() escribía el
-// texto de cada título de sección (ej. "  ESTUDIO TRIVELLONI") en la
-// misma columna que COL.id. Como COL.id ahora es la columna C (por
-// la migración Hoy/Semana), esos títulos quedaron "pegados" a la
-// columna C en lugar de la A.
+// ── ESCRITURA (toggles Hoy / Semana desde el dashboard) ─────────
+// Excepción autorizada por Santiago: estos dos toggles escriben directo
+// al Sheet sin pasar por el flujo de borrador/confirmación habitual,
+// porque son acciones reversibles de un click sobre datos que el propio
+// dashboard ya muestra (no hay riesgo de ejecutar algo no visto).
 //
-// Esta función es de UNA SOLA EJECUCIÓN: detecta esas filas-título
-// usando el criterio VIEJO (texto no numérico en la columna C, con
-// desc y categoría vacíos — que es exactamente cómo se las escribió
-// originalmente), las borra, y después llama a sortPendientes() para
-// que las regenere desde cero, esta vez correctamente en la columna A
-// (gracias a HEADER_MARKER_COL). No se pierde texto real: el título
-// se reconstruye automáticamente a partir del nombre de la categoría.
-// ── MIGRACIÓN ÚNICA: símbolos de la columna Hoy (✅/— → ⭐/☆) ────
-// Antes, la columna Hoy usaba los mismos símbolos que Semana (✅/—).
-// Ahora Hoy pasa a usar ⭐ (marcado) / ☆ (no marcado), para diferenciarla
-// visualmente de Semana y para que coincida con los íconos que ya usa
-// el dashboard. Esta función reescribe los valores YA EXISTENTES en la
-// hoja (Pendientes y Archivo); el código nuevo (onEdit, applyChanges,
-// etc.) ya escribe ⭐/☆ directamente de acá en adelante.
-// Corré esto UNA SOLA VEZ desde el editor (▶ Ejecutar → migrarSimbolosHoy),
-// después de pegar esta versión del código.
-function migrarSimbolosHoy() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  migrarSimbolosHoyEnHoja(ss.getSheetByName(PENDIENTES_TAB), 4);
-  const archivo = ss.getSheetByName("Archivo");
-  if (archivo) migrarSimbolosHoyEnHoja(archivo, 3);
-  SpreadsheetApp.flush();
-  Logger.log("Migración de símbolos de Hoy completa.");
-}
-
-function migrarSimbolosHoyEnHoja(sheet, firstDataRow) {
-  if (!sheet) return;
-  const lastRow = sheet.getLastRow();
-  if (lastRow < firstDataRow) {
-    Logger.log(`${sheet.getName()}: sin filas de datos, no hay nada que migrar.`);
-    return;
-  }
-  const n = lastRow - firstDataRow + 1;
-  const range  = sheet.getRange(firstDataRow, COL.hoy, n, 1);
-  const values = range.getValues();
-  let cambiadas = 0;
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i][0];
-    // Solo se tocan valores EXACTOS "✅" o "—" — el texto de los títulos
-    // de sección (que también vive en la misma columna en algunas filas)
-    // nunca coincide exactamente con esos dos valores, así que queda
-    // intacto sin necesidad de detectarlo explícitamente.
-    if (v === "✅")      { values[i][0] = "⭐"; cambiadas++; }
-    else if (v === "—") { values[i][0] = "☆"; cambiadas++; }
-  }
-  range.setValues(values);
-  Logger.log(`${sheet.getName()}: ${cambiadas} celda(s) de la columna Hoy actualizadas a ⭐/☆.`);
-}
-
-function migrarHeadersDeCategoriaAColumnaA() {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(PENDIENTES_TAB);
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 4) { Logger.log("Nada que limpiar."); return; }
-
-  const numCols = sheet.getLastColumn();
-  const allValues = sheet.getRange(4, 1, lastRow - 3, numCols).getValues();
-
-  // Criterio VIEJO: texto (no numérico, no vacío) en columna C (COL.id),
-  // con desc y categoría vacíos → es un título de sección mal ubicado.
-  const rowsToDelete = []; // números de fila absolutos (1-indexed), de mayor a menor
-  allValues.forEach((row, i) => {
-    const marker = row[COL.id - 1];
-    const desc   = row[COL.desc - 1];
-    const cat    = row[COL.cat  - 1];
-    const looksLikeOldHeader =
-      typeof marker !== "number" && marker !== "" && marker !== null && marker !== undefined &&
-      (desc === "" || desc === null || desc === undefined) &&
-      (cat  === "" || cat  === null || cat  === undefined);
-    if (looksLikeOldHeader) {
-      rowsToDelete.push(4 + i);
-      Logger.log(`Fila ${4 + i}: título mal ubicado detectado en col C: "${marker}" — se borrará.`);
-    }
-  });
-
-  if (rowsToDelete.length === 0) {
-    Logger.log("No se encontraron títulos mal ubicados en columna C. No se borra nada.");
-    return;
-  }
-
-  // Borrar de abajo hacia arriba para no desfasar los índices de fila.
-  rowsToDelete.sort((a, b) => b - a).forEach(r => sheet.deleteRow(r));
-  SpreadsheetApp.flush();
-
-  Logger.log(`${rowsToDelete.length} fila(s) borrada(s). Regenerando títulos en columna A...`);
-  sortPendientes(sheet);
-  SpreadsheetApp.flush();
-  Logger.log("Limpieza completa. Revisar visualmente que los títulos quedaron en columna A.");
-}
-
-// ── ESCRITURA ─────────────────────────────────────────────────
-function applyChanges(changes) {
-  const ss     = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet  = ss.getSheetByName(PENDIENTES_TAB);
-  const values = sheet.getDataRange().getValues();
-
-  const rowById = {};
-  let maxId = 0, lastRow = 3;
-  for (let i = 3; i < values.length; i++) {
-    const id = values[i][COL.id - 1];
-    if (typeof id === "number") {
-      rowById[id] = i + 1;
-      maxId = Math.max(maxId, id);
-      lastRow = i + 1;
-    }
-  }
-
-  const today = new Date();
-  const results = [];
-  const templateRow = getTaskTemplateRow(sheet);
-
-  for (const ch of changes) {
-    const op = ch.op;
-
-    if (op === "update") {
-      const rowNum = rowById[ch.id];
-      if (!rowNum) { results.push({ op, id: ch.id, status: "not_found" }); continue; }
-      const fieldToCol = { desc: COL.desc, cat: COL.cat, prio: COL.prio, status: COL.status, tercero: COL.tercero, notas: COL.notas, hoy: COL.hoy, semana: COL.semana };
-      for (const [key, val] of Object.entries(ch.fields || {})) {
-        if (fieldToCol[key]) sheet.getRange(rowNum, fieldToCol[key]).setValue(val);
-        else if (key === "venc") sheet.getRange(rowNum, COL.venc).setValue(val ? new Date(val) : "");
-      }
-      // Regla de consistencia: una tarea no puede estar marcada "hoy" si no
-      // está también en el radar de la "semana". Si esta edición quita la
-      // tarea del radar semanal, se le borra también la marca de hoy.
-      if (ch.fields && ch.fields.semana !== undefined && ch.fields.semana !== "✅") {
-        sheet.getRange(rowNum, COL.hoy).setValue("☆");
-      }
-      sheet.getRange(rowNum, COL.update).setValue(today);
-      results.push({ op, id: ch.id, status: "ok" });
-    }
-
-    else if (op === "add") {
-      const newId = maxId + 1; maxId = newId;
-      const newRow = lastRow + 1; lastRow = newRow;
-      const t = ch.task || {};
-      applyRowFormat(sheet, newRow, templateRow);
-      sheet.getRange(newRow, COL.id     ).setValue(newId);
-      sheet.getRange(newRow, COL.desc   ).setValue(t.desc    || "");
-      sheet.getRange(newRow, COL.cat    ).setValue(t.cat     || "");
-      sheet.getRange(newRow, COL.prio   ).setValue(t.prio    || "");
-      if (t.venc) sheet.getRange(newRow, COL.venc).setValue(new Date(t.venc));
-      sheet.getRange(newRow, COL.status ).setValue(t.status  || "🆕 Nuevo");
-      sheet.getRange(newRow, COL.tercero).setValue(t.tercero || "");
-      sheet.getRange(newRow, COL.notas  ).setValue(t.notas   || "");
-      sheet.getRange(newRow, COL.creado ).setValue(today);
-      sheet.getRange(newRow, COL.update ).setValue(today);
-      sheet.getRange(newRow, COL.semana ).setValue(t.semana  || "—");
-      // No puede haber "hoy" sin "semana"
-      sheet.getRange(newRow, COL.hoy    ).setValue((t.semana === "✅") ? (t.hoy || "☆") : "☆");
-      rowById[newId] = newRow;
-      results.push({ op, id: newId, desc: t.desc || "", status: "ok" });
-    }
-
-    else if (op === "delete") {
-      const rowNum = rowById[ch.id];
-      if (!rowNum) { results.push({ op, id: ch.id, status: "not_found" }); continue; }
-
-      // Completar campos antes de mover
-      sheet.getRange(rowNum, COL.status ).setValue("✅ Terminado");
-      sheet.getRange(rowNum, COL.update ).setValue(today);
-      sheet.getRange(rowNum, COL.cerrado).setValue(today);
-
-      // Mover fila a solapa Archivo
-      const archivo = getOrCreateArchivo(ss, sheet);
-      const numCols = sheet.getLastColumn();
-      const rowData = sheet.getRange(rowNum, 1, 1, numCols).getValues();
-      archivo.appendRow(rowData[0]);
-      sheet.deleteRow(rowNum);
-
-      // Reconstruir rowById porque los números de fila cambiaron
-      const newValues = sheet.getDataRange().getValues();
-      for (const key in rowById) delete rowById[key];
-      for (let i = 3; i < newValues.length; i++) {
-        const rid = newValues[i][COL.id - 1];
-        if (typeof rid === "number") rowById[rid] = i + 1;
-      }
-
-      results.push({ op, id: ch.id, status: "ok", moved_to: "Archivo" });
-    }
-
-    else { results.push({ op, status: "unknown_op" }); }
-  }
-
-  sortPendientes(sheet);
-  SpreadsheetApp.flush();
-  return { applied: results, total: results.length, timestamp: new Date().toISOString() };
-}
-
-// ── AUTO-ID PARA FILAS AGREGADAS A MANO ────────────────────────
-// Trigger simple: se ejecuta solo al editar desde la UI de Sheets
-// (no dispara con cambios hechos por el Web App / API, que ya asignan ID propio).
-function onEdit(e) {
+// Content-Type "text/plain" (en vez de "application/json") evita el
+// preflight CORS que Apps Script Web Apps no maneja por default; el
+// body sigue siendo JSON y Apps Script lo lee igual vía e.postData.contents.
+async function postChange(id, fields) {
+  const { url, token } = CFG;
+  const payload = { token, action: 'apply_changes', changes: [{ op: 'update', id, fields }] };
   try {
-    const sheet = e.range.getSheet();
-    if (sheet.getName() !== PENDIENTES_TAB) return;
+    const res  = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return true;
+  } catch (err) {
+    alert('No se pudo guardar el cambio: ' + err.message);
+    return false;
+  }
+}
 
-    const startRow = e.range.getRow();
-    const numRows  = e.range.getNumRows();
-    const startCol = e.range.getColumn();
-    const numColsE = e.range.getNumColumns();
-    if (startRow < 4) return; // filas 1-3 son encabezado
+function toggleHoy(id) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  if (t.hoy !== '⭐' && t.semana !== '✅') {
+    alert('Esta tarea no está en el radar de la semana. Agregala primero con 📑 antes de marcarla para hoy.');
+    return;
+  }
+  const prevHoy = t.hoy;
+  const newVal  = prevHoy === '⭐' ? '☆' : '⭐';
+  t.hoy = newVal; // optimista
+  renderAll();
+  postChange(id, { hoy: newVal }).then(ok => {
+    if (!ok) { t.hoy = prevHoy; renderAll(); }
+  });
+}
 
-    const lastRow = sheet.getLastRow();
-    let needsSort = false;
+function toggleSemana(id) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  const prevSemana = t.semana, prevHoy = t.hoy;
+  const newVal = prevSemana === '✅' ? '—' : '✅';
+  t.semana = newVal;
+  // Regla de consistencia (mismo criterio que el Apps Script): si sale
+  // del radar semanal, sale también de hoy.
+  if (newVal !== '✅') t.hoy = '☆';
+  renderAll();
+  postChange(id, { semana: newVal }).then(ok => {
+    if (!ok) { t.semana = prevSemana; t.hoy = prevHoy; renderAll(); }
+  });
+}
 
-    // Si la edición tocó Categoría o Prioridad, hay que reordenar
-    const endCol = startCol + numColsE - 1;
-    if ((startCol <= COL.cat  && endCol >= COL.cat) ||
-        (startCol <= COL.prio && endCol >= COL.prio)) {
-      needsSort = true;
+function changePrio(id, val) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  const prev = t.prio;
+  t.prio = val; // optimista
+  renderAll();
+  postChange(id, { prio: val }).then(ok => {
+    if (!ok) { t.prio = prev; renderAll(); }
+  });
+}
+
+// ── EDICIÓN DE CAMPOS (panel ✎) ─────────────────────────────────
+// Misma excepción que toggleHoy/toggleSemana/changePrio: escritura directa
+// vía apply_changes, sin pasar por el flujo de email/draft. Acá el que
+// escribe el dato es Santiago mismo desde su propio dashboard, no soy yo
+// generando el cambio por su cuenta — el riesgo que el flujo de email busca
+// evitar (un ID o campo mal mapeado por mi parte) no aplica a este caso.
+function toggleEdit(id) {
+  editingId = (editingId === id) ? null : id;
+  renderAll();
+}
+
+function saveField(id, field, value) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  const prev = t[field];
+  if (prev === value) return; // sin cambios, no llama al backend
+  t[field] = value; // optimista
+  renderAll();
+  postChange(id, { [field]: value }).then(ok => {
+    if (!ok) { t[field] = prev; renderAll(); }
+  });
+}
+
+// ── ALTA RÁPIDA (barra arriba de "Tareas de hoy") ───────────────
+// Mismo mecanismo de escritura directa que el resto de esta sección.
+// op "add" todavía no se probó contra el Apps Script real — si el backend
+// no lo soporta hoy, esta llamada va a fallar con un error claro en pantalla
+// (no en silencio) y la tarea seguirá creándose por el flujo de email como
+// antes, hasta agregar el soporte del lado del Web App.
+async function postAdd(fields) {
+  const { url, token } = CFG;
+  const payload = { token, action: 'apply_changes', changes: [{ op: 'add', fields }] };
+  try {
+    const res  = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return true;
+  } catch (err) {
+    alert('No se pudo crear la tarea: ' + err.message);
+    return false;
+  }
+}
+
+async function quickAdd() {
+  const descEl = document.getElementById('qa-desc');
+  const desc   = descEl.value.trim();
+  if (!desc) { descEl.focus(); return; }
+  const cat  = document.getElementById('qa-cat').value;
+  const prio = document.getElementById('qa-prio').value;
+  const venc = document.getElementById('qa-venc').value;
+  const btn  = document.getElementById('qa-btn');
+  const fields = { desc, cat, prio, semana: '✅', hoy: '⭐' };
+  if (venc) fields.venc = venc;
+  btn.disabled = true; btn.textContent = 'Agregando...';
+  const ok = await postAdd(fields);
+  if (ok) {
+    await loadData(); // trae la tarea recién creada con su ID real
+  } else {
+    btn.disabled = false; btn.textContent = '+ Agregar';
+  }
+}
+
+// "✅ Terminado" no es un cambio de campo simple: el Apps Script lo trata
+// como cierre (op "delete"), que fecha el cierre y mueve la fila a la
+// solapa Archivo. Por eso pasa por closeTask() con confirmación, en vez
+// de por postChange() como el resto de los valores de status.
+function changeStatus(id, val) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  if (val === '✅ Terminado') {
+    if (!confirm(`¿Marcar "${t.desc}" como Terminado?\n\nSe archivará y dejará de aparecer en Pendientes.`)) {
+      renderAll(); // revierte el <select> al valor actual (no se tocó t.status)
+      return;
     }
+    closeTask(id);
+    return;
+  }
+  const prev = t.status;
+  t.status = val; // optimista
+  renderAll();
+  postChange(id, { status: val }).then(ok => {
+    if (!ok) { t.status = prev; renderAll(); }
+  });
+}
 
-    // Calcular el ID máximo actual en toda la hoja
-    const idValues = sheet.getRange(4, COL.id, Math.max(lastRow - 3, 1), 1).getValues();
-    let maxId = 0;
-    for (const r of idValues) {
-      if (typeof r[0] === "number") maxId = Math.max(maxId, r[0]);
-    }
+async function closeTask(id) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  const { url, token } = CFG;
+  const payload = { token, action: 'apply_changes', changes: [{ op: 'delete', id }] };
+  try {
+    const res  = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    ALL_TASKS = ALL_TASKS.filter(x => x.id !== id);
+    renderAll();
+  } catch (err) {
+    alert('No se pudo archivar la tarea: ' + err.message);
+    renderAll();
+  }
+}
 
-    const today = new Date();
-    const templateRow = getTaskTemplateRow(sheet);
+// ── LOAD ──────────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('app').innerHTML = '<div class="loading">⏳ Cargando...</div>';
+  const { url, token } = CFG;
+  try {
+    const res  = await fetch(`${url}?token=${encodeURIComponent(token)}&action=get_all`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    ALL_TASKS  = (data.tasks    || []).map(t => ({ ...t, prio: normPrio(t.prio) }));
+    CAL_EVENTS = data.calendar  || [];
+    document.getElementById('sync-info').textContent =
+      `Actualizado: ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} · ${ALL_TASKS.length} tareas · ${CAL_EVENTS.length} eventos`;
+    renderAll();
+  } catch(err) {
+    document.getElementById('app').innerHTML =
+      `<div class="err-box">❌ ${esc(err.message)}<br><small>Verificá la URL y el token en ⚙</small></div>`;
+    document.getElementById('sync-info').textContent = 'Error al cargar';
+  }
+}
 
-    for (let i = 0; i < numRows; i++) {
-      const row = startRow + i;
-      if (row > lastRow) continue;
-
-      const idCell   = sheet.getRange(row, COL.id);
-      const descCell = sheet.getRange(row, COL.desc);
-      const id   = idCell.getValue();
-      const desc = descCell.getValue();
-
-      // Si hay descripción pero no hay ID todavía, asignar el siguiente
-      if ((id === "" || id === null || id === undefined) && desc && String(desc).trim() !== "") {
-        applyRowFormat(sheet, row, templateRow);
-        maxId++;
-        idCell.setValue(maxId);
-
-        const creadoCell = sheet.getRange(row, COL.creado);
-        if (!creadoCell.getValue()) creadoCell.setValue(today);
-
-        const updateCell = sheet.getRange(row, COL.update);
-        updateCell.setValue(today);
-
-        const statusCell = sheet.getRange(row, COL.status);
-        if (!statusCell.getValue()) statusCell.setValue("🆕 Nuevo");
-
-        const hoyCell = sheet.getRange(row, COL.hoy);
-        if (!hoyCell.getValue()) hoyCell.setValue("☆");
-
-        const semanaCell = sheet.getRange(row, COL.semana);
-        if (!semanaCell.getValue()) semanaCell.setValue("—");
-
-        needsSort = true;
-      }
-    }
-
-    // Regla de consistencia: si la edición tocó la columna Semana
-    // directamente en el Sheet, y la tarea quedó sin "✅" en Semana,
-    // hay que borrarle también la marca de Hoy (no puede estar en el
-    // radar diario sin estar en el radar semanal).
-    if (startCol <= COL.semana && endCol >= COL.semana) {
-      for (let i = 0; i < numRows; i++) {
-        const row = startRow + i;
-        if (row > lastRow) continue;
-        const semanaCell = sheet.getRange(row, COL.semana);
-        if (semanaCell.getValue() !== "✅") {
-          sheet.getRange(row, COL.hoy).setValue("☆");
+// ════════════════════════════════════════════════════════════════
+// CAJA
+// ════════════════════════════════════════════════════════════════
+function fmt(n, dec=0) {
+  if (n===null || n===undefined || isNaN(n)) return null;
+  return new Intl.NumberFormat('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec}).format(n);
+}
+function fmtARS(n) {
+  if (n===null || n===undefined) return '<span class="muted">-</span>';
+  return '$' + fmt(Math.round(n));
+}
+function fmtUSD(n) {
+  if (n===null || n===undefined) return '<span class="muted">-</span>';
+  const abs = Math.abs(n);
+  const s = 'USD ' + fmt(abs);
+  return n < 0 ? `<span class="neg">(${s})</span>` : s;
+}
+function metricCard(label, valueHtml, sub='', extraClass='') {
+  return `<div class="metric-card">
+    <div class="label">${label}</div>
+    <div class="value ${extraClass}">${valueHtml}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ''}
+  </div>`;
+}
+function destroyCajaCharts() {
+  Object.values(cajaCharts).forEach(c => { try { c.destroy(); } catch(e) {} });
+  cajaCharts = {};
+}
+async function loadCaja() {
+  destroyCajaCharts();
+  document.getElementById('caja-app').innerHTML = '<div class="loading">⏳ Cargando caja...</div>';
+  try {
+    const res = await fetch(CAJA_JSON_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    cajaLoaded = true;
+    renderCaja(d);
+  } catch(err) {
+    document.getElementById('caja-app').innerHTML =
+      `<div class="err-box">❌ No se pudo cargar caja_dashboard.json<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+function renderCaja(d) {
+  const saldoARS   = d.saldo_ars;
+  const semanal    = d.promedio_semanal;
+  const saldoUSD   = d.saldo_usd;
+  const consumoUSD = d.promedio_consumo_usd;
+  const compraUSD  = d.promedio_compraventa_usd;
+  const invUSD     = d.promedio_inversiones_usd;
+  const billeteras = (d.caja_usd || []).filter(r => r.nombre);
+  const ctas       = (d.ctas_ctes_usd || []).filter(r => r.nombre);
+  // ── Runway ARS ──
+  let runwayARS = null, arsClass = '';
+  if (saldoARS && semanal && semanal > 0) {
+    runwayARS = Math.round((saldoARS / semanal) * 7);
+    arsClass  = runwayARS < 7 ? 'red' : runwayARS < 14 ? 'amber' : 'green';
+  }
+  // ── Runway USD ──
+  let runwayUSD = null, usdClass = '';
+  if (saldoUSD && consumoUSD && consumoUSD < 0) {
+    runwayUSD = Math.round((saldoUSD / Math.abs(consumoUSD)) * 10) / 10;
+    usdClass  = runwayUSD < 1 ? 'red' : runwayUSD < 3 ? 'amber' : 'green';
+  }
+  let html = '';
+  // Meta
+  html += `<div class="caja-meta">Generado: ${d.generado || '-'}${d.actualizado_al ? ' · Datos al: ' + d.actualizado_al : ''}</div>`;
+  // ── ARS alerts ──
+  let alerts = '';
+  if (runwayARS !== null && runwayARS < 7)  alerts += `<div class="alert danger"><strong>Caja ARS crítica:</strong> saldo cubre ~${runwayARS} días.</div>`;
+  else if (runwayARS !== null && runwayARS < 14) alerts += `<div class="alert warning"><strong>Caja ARS baja:</strong> saldo cubre ~${runwayARS} días.</div>`;
+  // ── ARS metrics ──
+  html += `<div class="section-label">Caja ARS</div>`;
+  html += `<div class="metrics-grid">
+    ${metricCard('Saldo actual', saldoARS !== null ? fmtARS(saldoARS) : '-', '', arsClass ? arsClass : '')}
+    ${metricCard('Gasto semanal prom. (90d)', semanal !== null ? fmtARS(semanal) : '-')}
+    ${metricCard('Runway estimado', runwayARS !== null ? runwayARS + ' días' : '-', 'al ritmo actual', arsClass)}
+  </div>`;
+  if (alerts) html += `<div class="caja-alerts">${alerts}</div>`;
+  // ── USD alerts ──
+  let usdAlerts = '';
+  if (runwayUSD !== null && runwayUSD < 1)  usdAlerts += `<div class="alert danger"><strong>Caja USD crítica:</strong> runway ~${runwayUSD} meses.</div>`;
+  else if (runwayUSD !== null && runwayUSD < 3) usdAlerts += `<div class="alert warning"><strong>Caja USD baja:</strong> runway ~${runwayUSD} meses.</div>`;
+  // ── USD metrics ──
+  html += `<div class="section-label">Caja USD</div>`;
+  html += `<div class="metrics-grid">
+    ${metricCard('Saldo actual', saldoUSD !== null ? fmtUSD(saldoUSD) : '-')}
+    ${metricCard('Consumo mensual prom. (90d)', consumoUSD !== null ? fmtUSD(consumoUSD) : '-')}
+    ${metricCard('Runway estimado', runwayUSD !== null ? runwayUSD + ' meses' : '-', 'al ritmo actual', usdClass)}
+    ${metricCard('Compraventa mensual prom. (90d)', compraUSD !== null ? fmtUSD(compraUSD) : '-')}
+    ${metricCard('Inversiones mensual prom. (90d)', invUSD !== null ? fmtUSD(invUSD) : '-')}
+    <div class="metric-card placeholder"></div>
+  </div>`;
+  if (usdAlerts) html += `<div class="caja-alerts">${usdAlerts}</div>`;
+  // ── Billeteras USD ──
+  if (billeteras.length > 0) {
+    const rows = billeteras.map(r =>
+      `<tr><td>${esc(r.nombre)}</td><td>${fmtUSD(r.cash)}</td><td>${fmtUSD(r.caja_seg)}</td><td>${fmtUSD(r.total)}</td></tr>`
+    ).join('');
+    const tfoot = d.total_usd !== null
+      ? `<tfoot><tr><td>Total USD neto</td><td></td><td></td><td>${fmtUSD(d.total_usd)}</td></tr></tfoot>` : '';
+    html += `<div class="section-label">Caja USD — Billeteras</div>
+    <div class="caja-card">
+      <table class="caja-table">
+        <thead><tr><th>Billetera</th><th>Cash</th><th>Caja seg.</th><th>Total</th></tr></thead>
+        <tbody>${rows}</tbody>${tfoot}
+      </table>
+      <div class="chart-wrap"><canvas id="chartBilleteras"></canvas></div>
+    </div>`;
+  }
+  // ── Cuentas corrientes ──
+  if (ctas.length > 0) {
+    const ctaRows = ctas.map(r => {
+      const neg = r.saldo < 0;
+      return `<tr><td>${esc(r.nombre)}</td><td class="${neg?'neg':''}">${fmtUSD(r.saldo)}</td></tr>`;
+    }).join('');
+    const ctaFoot = d.total_ctas_ctes_usd !== null
+      ? `<tfoot><tr><td>Total</td><td class="${d.total_ctas_ctes_usd<0?'neg':''}">${fmtUSD(d.total_ctas_ctes_usd)}</td></tr></tfoot>` : '';
+    html += `<div class="section-label">Cuentas corrientes terceros USD</div>
+    <div class="caja-card">
+      <table class="caja-table">
+        <thead><tr><th>Contraparte</th><th>Saldo (USD)</th></tr></thead>
+        <tbody>${ctaRows}</tbody>${ctaFoot}
+      </table>
+      <p style="font-size:11px;color:#bbb;margin-top:10px;">Negativo = presté dinero</p>
+    </div>`;
+  }
+  // ── Egresos ARS ──
+  if (d.chart_egresos && d.chart_egresos.meses && d.chart_egresos.meses.length > 0) {
+    html += `<div class="section-label">Egresos ARS por categoría — últimos 12 meses</div>
+    <div class="caja-card"><div class="chart-wrap tall"><canvas id="chartEgresos"></canvas></div></div>`;
+  }
+  // ── USD Ops ──
+  if (d.chart_usd_ops && d.chart_usd_ops.meses && d.chart_usd_ops.meses.length > 0) {
+    html += `<div class="section-label">Compras, ventas e inversiones USD — últimos 12 meses</div>
+    <div class="caja-card"><div class="chart-wrap tall"><canvas id="chartUSDOps"></canvas></div></div>`;
+  }
+  document.getElementById('caja-app').innerHTML = html;
+  // ── Render charts ──
+  const CLRS = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#b07aa1'];
+  if (billeteras.length > 0) {
+    cajaCharts.billeteras = new Chart(document.getElementById('chartBilleteras'), {
+      type: 'bar',
+      data: {
+        labels: billeteras.map(r => r.nombre),
+        datasets: [{
+          label: 'Total USD',
+          data: billeteras.map(r => Math.round(r.total || 0)),
+          backgroundColor: billeteras.map(r => (r.total||0) < 0 ? '#f5c6c6' : '#c6dff5'),
+          borderColor:     billeteras.map(r => (r.total||0) < 0 ? '#b83232' : '#1860a8'),
+          borderWidth: 1, borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#f0efeb' }, ticks: { font: { size: 11 }, color: '#aaa' } },
+          y: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#555' } }
         }
       }
-    }
-
-    if (needsSort) sortPendientes(sheet);
-  } catch (err) {
-    // Los simple triggers no pueden mostrar UI ni loguear afuera;
-    // si falla, el ID queda pendiente de corregir a mano.
+    });
+  }
+  if (d.chart_egresos && d.chart_egresos.meses.length > 0) {
+    const ce = d.chart_egresos;
+    cajaCharts.egresos = new Chart(document.getElementById('chartEgresos'), {
+      type: 'bar',
+      data: {
+        labels: ce.meses,
+        datasets: ce.categorias.map((cat, i) => ({
+          label: cat, data: ce.datos[cat],
+          backgroundColor: CLRS[i % CLRS.length], borderWidth: 0, borderRadius: 2
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+          tooltip: { callbacks: { label: ctx => ' $' + fmt(ctx.raw) } }
+        },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 }, color: '#aaa' } },
+          y: { stacked: true, grid: { color: '#f0efeb' }, ticks: { font: { size: 10 }, color: '#aaa', callback: v => '$' + fmt(v) } }
+        }
+      }
+    });
+  }
+  if (d.chart_usd_ops && d.chart_usd_ops.meses.length > 0) {
+    const cu = d.chart_usd_ops;
+    cajaCharts.usdOps = new Chart(document.getElementById('chartUSDOps'), {
+      type: 'bar',
+      data: {
+        labels: cu.meses,
+        datasets: [
+          { label: 'Compra USD',      data: cu.compra,      backgroundColor: '#4e79a7', borderWidth: 0, borderRadius: 2 },
+          { label: 'Venta USD',       data: cu.venta,       backgroundColor: '#e15759', borderWidth: 0, borderRadius: 2 },
+          { label: 'Inversiones SS',  data: cu.inversiones, backgroundColor: '#59a14f', borderWidth: 0, borderRadius: 2 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+          tooltip: { callbacks: { label: ctx => ' $' + fmt(ctx.raw) } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#aaa' } },
+          y: { grid: { color: '#f0efeb' }, ticks: { font: { size: 10 }, color: '#aaa', callback: v => '$' + fmt(v) } }
+        }
+      }
+    });
   }
 }
 
-// ── ARREGLO ÚNICO PARA FILAS YA EXISTENTES SIN ID ───────────────
-// Correr UNA VEZ a mano desde el editor (▶ Ejecutar) para corregir
-// filas que se agregaron a mano ANTES de que existiera el trigger onEdit.
-// Les asigna ID, formato y al final ordena todo por categoría/prioridad.
-function fixPendientesSinID() {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(PENDIENTES_TAB);
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 4) { Logger.log("No hay filas de datos."); return; }
-
-  const numRows = lastRow - 3;
-  const idValues   = sheet.getRange(4, COL.id,   numRows, 1).getValues();
-  const descValues = sheet.getRange(4, COL.desc, numRows, 1).getValues();
-
-  let maxId = 0;
-  for (const r of idValues) {
-    if (typeof r[0] === "number") maxId = Math.max(maxId, r[0]);
-  }
-
-  const today = new Date();
-  const templateRow = getTaskTemplateRow(sheet);
-  let arregladas = 0;
-
-  for (let i = 0; i < numRows; i++) {
-    const row  = i + 4;
-    const id   = idValues[i][0];
-    const desc = descValues[i][0];
-
-    if ((id === "" || id === null || id === undefined) && desc && String(desc).trim() !== "") {
-      applyRowFormat(sheet, row, templateRow);
-      maxId++;
-      sheet.getRange(row, COL.id).setValue(maxId);
-
-      const creadoCell = sheet.getRange(row, COL.creado);
-      if (!creadoCell.getValue()) creadoCell.setValue(today);
-
-      sheet.getRange(row, COL.update).setValue(today);
-
-      const statusCell = sheet.getRange(row, COL.status);
-      if (!statusCell.getValue()) statusCell.setValue("🆕 Nuevo");
-
-      const hoyCell = sheet.getRange(row, COL.hoy);
-      if (!hoyCell.getValue()) hoyCell.setValue("☆");
-
-      const semanaCell = sheet.getRange(row, COL.semana);
-      if (!semanaCell.getValue()) semanaCell.setValue("—");
-
-      arregladas++;
-    }
-  }
-
-  sortPendientes(sheet);
-  SpreadsheetApp.flush();
-  Logger.log(`Filas arregladas: ${arregladas}. Hoja reordenada por categoría/prioridad.`);
+// ── STARTUP ───────────────────────────────────────────────────
+if (loadConfig()) {
+  document.getElementById('main').style.display  = 'block';
+  loadData();
+} else {
+  document.getElementById('setup').style.display = 'flex';
 }
-
-// ── TEST ──────────────────────────────────────────────────────
-function testGet()      { Logger.log(JSON.stringify(getTasks().tasks[0])); }
-function testCalendar() { Logger.log(JSON.stringify(getCalendar())); }
-function testAll()      { const r = getAll(); Logger.log(`Tareas: ${r.count} | Eventos: ${r.calendar.length}`); }
+</script>
+</body>
+</html>

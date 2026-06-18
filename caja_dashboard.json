@@ -2,9 +2,9 @@
   "caja_usd": [
     {
       "nombre": "SS",
-      "cash": 117432.26570048308,
+      "cash": 117532.26570048308,
       "caja_seg": 0,
-      "total": 117432.26570048308
+      "total": 117532.26570048308
     },
     {
       "nombre": "STS",
@@ -20,9 +20,9 @@
     },
     {
       "nombre": "Conceptual",
-      "cash": 100,
+      "cash": 0,
       "caja_seg": 0,
-      "total": 100
+      "total": 0
     },
     {
       "nombre": "Estudio",
@@ -54,7 +54,7 @@
     },
     {
       "nombre": "Conceptual",
-      "saldo": 100
+      "saldo": 0
     }
   ],
   "periodo": "2026-04",
@@ -63,11 +63,11 @@
   "saldo_usd": 148100.33333333334,
   "promedio_semanal": 2290366.0888888887,
   "promedio_compraventa_usd": -5449.367088607594,
-  "promedio_inversiones_usd": -9833.181818181818,
-  "promedio_consumo_usd": -15282.548906789412,
+  "promedio_inversiones_usd": -9787.727272727272,
+  "promedio_consumo_usd": -15237.094361334866,
   "total_usd": 148100.33333333334,
-  "total_ctas_ctes_usd": -4900,
-  "generado": "18/06/2026 17:06",
+  "total_ctas_ctes_usd": -5000,
+  "generado": "18/06/2026 17:28",
   "chart_egresos": {
     "meses": [
       "jul-25",

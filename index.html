@@ -43,39 +43,27 @@ body {
 .setup-err { color: #dc2626; font-size: 11px; margin-top: 8px; display: none; }
 
 /* ── HEADER ── */
-.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
 .header h1 { font-size: 18px; font-weight: 800; }
 .header-right { text-align: right; }
 .sync-info { font-size: 10px; color: #9ca3af; line-height: 1.7; }
 .btn-sm {
-  font-size: 20px; font-weight: 700; padding: 8px 16px;
+  font-size: 24px; font-weight: 700; padding: 10px 20px;
   border-radius: 20px; border: 2px solid #e5e7eb;
-  background: #fff; color: #6b7280; cursor: pointer; margin-left: 6px;
+  background: #fff; color: #6b7280; cursor: pointer; margin-left: 8px;
 }
 .btn-sm:hover { border-color: #6366f1; color: #6366f1; }
 .date-sub { font-size: 11px; color: #9ca3af; margin-top: 3px; text-transform: capitalize; }
-
-/* ── TABS ── */
-.tab-bar {
-  display: flex; gap: 4px; margin-bottom: 16px;
-  background: #e5e7eb; border-radius: 10px; padding: 4px;
-}
-.tab-btn {
-  flex: 1; padding: 9px 12px; border: none; border-radius: 7px;
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  background: transparent; color: #6b7280; transition: all .15s;
-}
-.tab-btn.active { background: #fff; color: #1a1a2e; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-.tab-btn:hover:not(.active) { color: #1a1a2e; }
 
 /* ── STATS ── */
 .stats { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .stat { background: #fff; border-radius: 10px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); flex: 1; min-width: 70px; text-align: center; }
 .stat-val { font-size: 24px; font-weight: 800; color: #1a1a2e; line-height: 1; }
 .stat-lbl { font-size: 9px; color: #9ca3af; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-top: 3px; }
-.s-hoy  .stat-val { color: #d97706; }
-.s-crit .stat-val { color: #dc2626; }
-.s-venc .stat-val { color: #7c3aed; }
+.s-hoy    .stat-val { color: #d97706; }
+.s-semana .stat-val { color: #0891b2; }
+.s-crit   .stat-val { color: #dc2626; }
+.s-venc   .stat-val { color: #7c3aed; }
 
 /* ── SECTIONS ── */
 .section { margin-bottom: 20px; }
@@ -92,7 +80,7 @@ body {
 /* ── FILTERS ── */
 .filter-bar { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
 .fbtn {
-  font-size: 12px; font-weight: 600; padding: 6px 14px;
+  font-size: 18px; font-weight: 600; padding: 10px 20px;
   border-radius: 20px; border: 2px solid #e5e7eb;
   background: #fff; color: #6b7280; cursor: pointer;
   display: flex; align-items: center; gap: 6px; transition: all .12s;
@@ -113,7 +101,16 @@ body {
 .p-baja    { border-left-color: #22c55e; }
 .is-hoy    { background: #fffbeb; }
 .is-venc   { border-left-color: #7c3aed; }
+.task-top  { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .task-desc { font-size: 12.5px; font-weight: 500; color: #111827; line-height: 1.45; }
+.task-controls { display: flex; gap: 2px; flex-shrink: 0; }
+.toggle-btn {
+  background: none; border: none; font-size: 16px; line-height: 1;
+  padding: 2px 3px; cursor: pointer; opacity: .45;
+  transition: opacity .12s, transform .12s;
+}
+.toggle-btn:hover  { opacity: 1; transform: scale(1.18); }
+.toggle-btn.active { opacity: 1; }
 .task-meta { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
 .tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
 .tag-cat    { background: #f3f4f6; color: #374151; }
@@ -130,6 +127,19 @@ body {
 .cal-time   { font-size: 11px; font-weight: 700; color: #6366f1; min-width: 46px; flex-shrink: 0; }
 .cal-allday { font-size: 10px; color: #9ca3af; font-style: italic; min-width: 46px; flex-shrink: 0; }
 .cal-title  { font-size: 12.5px; color: #111827; }
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex; gap: 4px; margin-bottom: 16px;
+  background: #e5e7eb; border-radius: 10px; padding: 4px;
+}
+.tab-btn {
+  flex: 1; padding: 9px 12px; border: none; border-radius: 7px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  background: transparent; color: #6b7280; transition: all .15s;
+}
+.tab-btn.active { background: #fff; color: #1a1a2e; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.tab-btn:hover:not(.active) { color: #1a1a2e; }
 
 /* ── CAJA STYLES ── */
 .metrics-grid {
@@ -177,7 +187,7 @@ body {
 <!-- Setup screen -->
 <div class="setup-overlay" id="setup" style="display:none">
   <div class="setup-card">
-    <h2>📋 Dashboard — Configuración</h2>
+    <h2>📊 Dashboard — Configuración</h2>
     <p>Primera vez o nueva configuración. Ingresá la URL y el token del Apps Script para conectar con tus tareas.</p>
     <label>URL del Apps Script</label>
     <input id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
@@ -198,21 +208,18 @@ body {
     <div class="header-right">
       <div class="sync-info" id="sync-info">Cargando...</div>
       <button class="btn-sm" onclick="refreshActive()" title="Actualizar">↻</button>
-      <button class="btn-sm" onclick="showSetup()" title="Configuración">⚙</button>
+      <button class="btn-sm" onclick="showSetup()" title="Cambiar configuración">⚙</button>
     </div>
   </div>
-
   <!-- Tabs -->
   <div class="tab-bar">
     <button id="tab-pendientes" class="tab-btn active" onclick="switchTab('pendientes')">📋 Pendientes</button>
     <button id="tab-caja"       class="tab-btn"        onclick="switchTab('caja')">💰 Caja</button>
   </div>
-
   <!-- Pendientes view -->
   <div id="view-pendientes">
     <div id="app"><div class="loading">⏳ Cargando...</div></div>
   </div>
-
   <!-- Caja view -->
   <div id="view-caja" style="display:none">
     <div id="caja-app"><div class="loading">⏳ Cargando caja...</div></div>
@@ -220,9 +227,7 @@ body {
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════════════
-// CONFIG
-// ════════════════════════════════════════════════════════════════
+// ── CONFIG ────────────────────────────────────────────────────
 const CFG_KEY = 'pendientes_cfg';
 const CAJA_JSON_URL = 'https://raw.githubusercontent.com/ssocas/Pendientes-dashboard/main/caja_dashboard.json';
 let CFG = null;
@@ -255,9 +260,7 @@ function showSetup() {
   document.getElementById('setup').style.display = 'flex';
 }
 
-// ════════════════════════════════════════════════════════════════
-// TABS
-// ════════════════════════════════════════════════════════════════
+// ── TABS ──────────────────────────────────────────────────────
 function switchTab(tab) {
   activeTab = tab;
   document.getElementById('tab-pendientes').className = 'tab-btn' + (tab === 'pendientes' ? ' active' : '');
@@ -266,7 +269,6 @@ function switchTab(tab) {
   document.getElementById('view-caja').style.display       = tab === 'caja'       ? 'block' : 'none';
   if (tab === 'caja' && !cajaLoaded) loadCaja();
 }
-
 function refreshActive() {
   if (activeTab === 'pendientes') {
     loadData();
@@ -276,9 +278,7 @@ function refreshActive() {
   }
 }
 
-// ════════════════════════════════════════════════════════════════
-// PENDIENTES — init
-// ════════════════════════════════════════════════════════════════
+// ── INIT ──────────────────────────────────────────────────────
 const CAT_COLORS = {
   'Estudio Trivelloni':      '#1565C0',
   'Conceptual Brasil':       '#00897B',
@@ -296,6 +296,7 @@ let ALL_TASKS = [], CAL_EVENTS = [], activeCat = 'Todas';
 document.getElementById('date-line').textContent =
   new Date().toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
+// ── NORMALIZE ─────────────────────────────────────────────────
 function normPrio(r) {
   if (!r) return '';
   if (r.includes('rítica') || r.includes('ritica')) return '🔴 Crítica';
@@ -313,6 +314,8 @@ function normStatus(r) {
   if (r.includes('Nuevo'))       return '🆕 Nuevo';
   return r;
 }
+
+// ── DATE UTILS ────────────────────────────────────────────────
 function daysFrom(dateStr) {
   if (!dateStr) return null;
   const [y,m,d] = dateStr.slice(0,10).split('-').map(Number);
@@ -336,6 +339,8 @@ function dayLabel(dateStr) {
   if (diff === 1) return 'Mañana';
   return dt.toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'short'});
 }
+
+// ── RENDER ────────────────────────────────────────────────────
 function prioCls(p) {
   if (!p) return '';
   if (p.includes('rítica')) return 'p-critica';
@@ -347,8 +352,9 @@ function prioCls(p) {
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function renderTask(t, extra='') {
-  const isHoy = t.hoy === '✅';
+
+function renderTask(t, extra='', controls=[]) {
+  const isHoy = t.hoy === '⭐';
   let vTag = '';
   if (t.venc) {
     const diff = daysFrom(t.venc);
@@ -357,8 +363,23 @@ function renderTask(t, extra='') {
   }
   const cColor  = CAT_COLORS[t.cat] || '#666';
   const tercTag = t.tercero ? `<span class="tag tag-terc">👤 ${esc(t.tercero)}</span>` : '';
+
+  let controlsHtml = '';
+  if (controls.includes('star')) {
+    const active = t.hoy === '⭐';
+    controlsHtml += `<button class="toggle-btn${active?' active':''}" onclick="event.stopPropagation();toggleHoy(${t.id})" title="${active?'Quitar de Hoy':'Marcar para Hoy'}">${active?'⭐':'☆'}</button>`;
+  }
+  if (controls.includes('bookmark')) {
+    const active = t.semana === '✅';
+    controlsHtml += `<button class="toggle-btn${active?' active':''}" onclick="event.stopPropagation();toggleSemana(${t.id})" title="${active?'Quitar del radar semanal':'Agregar al radar semanal'}">${active?'🔖':'📑'}</button>`;
+  }
+  const controlsBlock = controlsHtml ? `<div class="task-controls">${controlsHtml}</div>` : '';
+
   return `<div class="task-card ${prioCls(t.prio)}${isHoy?' is-hoy':''}${extra}">
-    <div class="task-desc">${esc(t.desc)}</div>
+    <div class="task-top">
+      <div class="task-desc">${esc(t.desc)}</div>
+      ${controlsBlock}
+    </div>
     <div class="task-meta">
       <span class="tag tag-cat" style="border-left:2px solid ${cColor}">${esc(t.cat)}</span>
       <span class="tag tag-status">${esc(normStatus(t.status))}</span>
@@ -367,6 +388,7 @@ function renderTask(t, extra='') {
     </div>
   </div>`;
 }
+
 function renderCalendar(events) {
   if (!events || !events.length) return '<div class="empty">Sin eventos en los próximos 7 días.</div>';
   const byDate = {};
@@ -382,6 +404,7 @@ function renderCalendar(events) {
     </div>`;
   }).join('');
 }
+
 function buildFilterBar(tasks) {
   const used = CAT_ORDER.filter(c => tasks.some(t => t.cat === c));
   return ['Todas', ...used].map(c => {
@@ -391,15 +414,21 @@ function buildFilterBar(tasks) {
     return `<button class="fbtn${c===activeCat?' active':''}" onclick="setFilter('${esc(c)}')">${dot}${esc(c)} (${cnt})</button>`;
   }).join('');
 }
+
 function setFilter(cat) { activeCat = cat; renderAll(); }
+
 function renderAll() {
-  const tasks  = ALL_TASKS;
-  const hoy    = tasks.filter(t => t.hoy === '✅');
-  const rest   = tasks.filter(t => t.hoy !== '✅');
-  const vencen = rest.filter(t => { const d=daysFrom(t.venc); return d!==null && d>=0 && d<=7; });
-  const criticos = tasks.filter(t => (t.prio||'').includes('rítica')).length;
+  const tasks   = ALL_TASKS;
+  const hoy     = tasks.filter(t => t.hoy === '⭐');
+  const semana  = tasks.filter(t => t.semana === '✅');
+  // El radar de la semana muestra las marcadas "semana" que no estén YA
+  // en "hoy", para no duplicar la tarjeta en las dos secciones.
+  const semanaOnly = semana.filter(t => t.hoy !== '⭐');
+  const restoVenc  = tasks.filter(t => t.hoy !== '⭐');
+  const vencen     = restoVenc.filter(t => { const d=daysFrom(t.venc); return d!==null && d>=0 && d<=7; });
+  const criticos   = tasks.filter(t => (t.prio||'').includes('rítica')).length;
   const priOrd = {'🔴 Crítica':1,'🟠 Alta':2,'🟡 Media':3,'🟢 Baja':4};
-  const filtered = (activeCat==='Todas' ? rest : rest.filter(t=>t.cat===activeCat))
+  const filtered = (activeCat==='Todas' ? tasks : tasks.filter(t=>t.cat===activeCat))
     .sort((a,b) => {
       const ci = CAT_ORDER.indexOf(a.cat) - CAT_ORDER.indexOf(b.cat);
       return ci !== 0 ? ci : (priOrd[normPrio(a.prio)]||9)-(priOrd[normPrio(b.prio)]||9);
@@ -408,13 +437,19 @@ function renderAll() {
   let html = `<div class="stats">
     <div class="stat"><div class="stat-val">${tasks.length}</div><div class="stat-lbl">Total activos</div></div>
     <div class="stat s-hoy"><div class="stat-val">${hoy.length}</div><div class="stat-lbl">⭐ Hoy</div></div>
+    <div class="stat s-semana"><div class="stat-val">${semana.length}</div><div class="stat-lbl">🔖 Semana</div></div>
     <div class="stat s-crit"><div class="stat-val">${criticos}</div><div class="stat-lbl">🔴 Críticos</div></div>
     <div class="stat s-venc"><div class="stat-val">${vencen.length}</div><div class="stat-lbl">⏰ 7 días</div></div>
   </div>`;
 
   html += `<div class="section">
-    <div class="section-title"><span class="dot" style="background:#22c55e"></span>Foco del día<span class="badge">${hoy.length}</span></div>
-    ${hoy.length ? hoy.map(t=>renderTask(t)).join('') : '<div class="empty">Sin tareas marcadas para hoy.</div>'}
+    <div class="section-title"><span class="dot" style="background:#d97706"></span>Tareas de hoy<span class="badge">${hoy.length}</span></div>
+    ${hoy.length ? hoy.map(t=>renderTask(t,'',['star','bookmark'])).join('') : '<div class="empty">Sin tareas marcadas para hoy. Usá ⭐ en el radar de la semana para agregar.</div>'}
+  </div>`;
+
+  html += `<div class="section">
+    <div class="section-title"><span class="dot" style="background:#22c55e"></span>Radar de la semana<span class="badge">${semanaOnly.length}</span></div>
+    ${semanaOnly.length ? semanaOnly.map(t=>renderTask(t,'',['star','bookmark'])).join('') : '<div class="empty">Sin tareas en el radar semanal (fuera de las ya marcadas para hoy).</div>'}
   </div>`;
 
   html += `<div class="section">
@@ -429,12 +464,72 @@ function renderAll() {
 
   html += `<div class="section">
     <div class="section-title"><span class="dot" style="background:#9ca3af"></span>Todos los pendientes<span class="badge">${filtered.length}</span></div>
-    <div class="filter-bar">${buildFilterBar(rest)}</div>
-    <div class="tasks-grid">${filtered.length ? filtered.map(t=>renderTask(t)).join('') : '<div class="empty">Sin tareas en esta categoría.</div>'}</div>
+    <div class="filter-bar">${buildFilterBar(tasks)}</div>
+    <div class="tasks-grid">${filtered.length ? filtered.map(t=>renderTask(t,'',['bookmark'])).join('') : '<div class="empty">Sin tareas en esta categoría.</div>'}</div>
   </div>`;
 
   document.getElementById('app').innerHTML = html;
 }
+
+// ── ESCRITURA (toggles Hoy / Semana desde el dashboard) ─────────
+// Excepción autorizada por Santiago: estos dos toggles escriben directo
+// al Sheet sin pasar por el flujo de borrador/confirmación habitual,
+// porque son acciones reversibles de un click sobre datos que el propio
+// dashboard ya muestra (no hay riesgo de ejecutar algo no visto).
+//
+// Content-Type "text/plain" (en vez de "application/json") evita el
+// preflight CORS que Apps Script Web Apps no maneja por default; el
+// body sigue siendo JSON y Apps Script lo lee igual vía e.postData.contents.
+async function postChange(id, fields) {
+  const { url, token } = CFG;
+  const payload = { token, action: 'apply_changes', changes: [{ op: 'update', id, fields }] };
+  try {
+    const res  = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return true;
+  } catch (err) {
+    alert('No se pudo guardar el cambio: ' + err.message);
+    return false;
+  }
+}
+
+function toggleHoy(id) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  if (t.hoy !== '⭐' && t.semana !== '✅') {
+    alert('Esta tarea no está en el radar de la semana. Agregala primero con 📑 antes de marcarla para hoy.');
+    return;
+  }
+  const prevHoy = t.hoy;
+  const newVal  = prevHoy === '⭐' ? '☆' : '⭐';
+  t.hoy = newVal; // optimista
+  renderAll();
+  postChange(id, { hoy: newVal }).then(ok => {
+    if (!ok) { t.hoy = prevHoy; renderAll(); }
+  });
+}
+
+function toggleSemana(id) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  const prevSemana = t.semana, prevHoy = t.hoy;
+  const newVal = prevSemana === '✅' ? '—' : '✅';
+  t.semana = newVal;
+  // Regla de consistencia (mismo criterio que el Apps Script): si sale
+  // del radar semanal, sale también de hoy.
+  if (newVal !== '✅') t.hoy = '☆';
+  renderAll();
+  postChange(id, { semana: newVal }).then(ok => {
+    if (!ok) { t.semana = prevSemana; t.hoy = prevHoy; renderAll(); }
+  });
+}
+
+// ── LOAD ──────────────────────────────────────────────────────
 async function loadData() {
   document.getElementById('app').innerHTML = '<div class="loading">⏳ Cargando...</div>';
   const { url, token } = CFG;
@@ -482,7 +577,6 @@ function destroyCajaCharts() {
   Object.values(cajaCharts).forEach(c => { try { c.destroy(); } catch(e) {} });
   cajaCharts = {};
 }
-
 async function loadCaja() {
   destroyCajaCharts();
   document.getElementById('caja-app').innerHTML = '<div class="loading">⏳ Cargando caja...</div>';
@@ -497,7 +591,6 @@ async function loadCaja() {
       `<div class="err-box">❌ No se pudo cargar caja_dashboard.json<br><small>${esc(err.message)}</small></div>`;
   }
 }
-
 function renderCaja(d) {
   const saldoARS   = d.saldo_ars;
   const semanal    = d.promedio_semanal;
@@ -507,31 +600,25 @@ function renderCaja(d) {
   const invUSD     = d.promedio_inversiones_usd;
   const billeteras = (d.caja_usd || []).filter(r => r.nombre);
   const ctas       = (d.ctas_ctes_usd || []).filter(r => r.nombre);
-
   // ── Runway ARS ──
   let runwayARS = null, arsClass = '';
   if (saldoARS && semanal && semanal > 0) {
     runwayARS = Math.round((saldoARS / semanal) * 7);
     arsClass  = runwayARS < 7 ? 'red' : runwayARS < 14 ? 'amber' : 'green';
   }
-
   // ── Runway USD ──
   let runwayUSD = null, usdClass = '';
   if (saldoUSD && consumoUSD && consumoUSD < 0) {
     runwayUSD = Math.round((saldoUSD / Math.abs(consumoUSD)) * 10) / 10;
     usdClass  = runwayUSD < 1 ? 'red' : runwayUSD < 3 ? 'amber' : 'green';
   }
-
   let html = '';
-
   // Meta
   html += `<div class="caja-meta">Generado: ${d.generado || '-'}${d.actualizado_al ? ' · Datos al: ' + d.actualizado_al : ''}</div>`;
-
   // ── ARS alerts ──
   let alerts = '';
   if (runwayARS !== null && runwayARS < 7)  alerts += `<div class="alert danger"><strong>Caja ARS crítica:</strong> saldo cubre ~${runwayARS} días.</div>`;
   else if (runwayARS !== null && runwayARS < 14) alerts += `<div class="alert warning"><strong>Caja ARS baja:</strong> saldo cubre ~${runwayARS} días.</div>`;
-
   // ── ARS metrics ──
   html += `<div class="section-label">Caja ARS</div>`;
   html += `<div class="metrics-grid">
@@ -540,12 +627,10 @@ function renderCaja(d) {
     ${metricCard('Runway estimado', runwayARS !== null ? runwayARS + ' días' : '-', 'al ritmo actual', arsClass)}
   </div>`;
   if (alerts) html += `<div class="caja-alerts">${alerts}</div>`;
-
   // ── USD alerts ──
   let usdAlerts = '';
   if (runwayUSD !== null && runwayUSD < 1)  usdAlerts += `<div class="alert danger"><strong>Caja USD crítica:</strong> runway ~${runwayUSD} meses.</div>`;
   else if (runwayUSD !== null && runwayUSD < 3) usdAlerts += `<div class="alert warning"><strong>Caja USD baja:</strong> runway ~${runwayUSD} meses.</div>`;
-
   // ── USD metrics ──
   html += `<div class="section-label">Caja USD</div>`;
   html += `<div class="metrics-grid">
@@ -557,7 +642,6 @@ function renderCaja(d) {
     <div class="metric-card placeholder"></div>
   </div>`;
   if (usdAlerts) html += `<div class="caja-alerts">${usdAlerts}</div>`;
-
   // ── Billeteras USD ──
   if (billeteras.length > 0) {
     const rows = billeteras.map(r =>
@@ -574,7 +658,6 @@ function renderCaja(d) {
       <div class="chart-wrap"><canvas id="chartBilleteras"></canvas></div>
     </div>`;
   }
-
   // ── Cuentas corrientes ──
   if (ctas.length > 0) {
     const ctaRows = ctas.map(r => {
@@ -592,24 +675,19 @@ function renderCaja(d) {
       <p style="font-size:11px;color:#bbb;margin-top:10px;">Negativo = presté dinero</p>
     </div>`;
   }
-
   // ── Egresos ARS ──
   if (d.chart_egresos && d.chart_egresos.meses && d.chart_egresos.meses.length > 0) {
     html += `<div class="section-label">Egresos ARS por categoría — últimos 12 meses</div>
     <div class="caja-card"><div class="chart-wrap tall"><canvas id="chartEgresos"></canvas></div></div>`;
   }
-
   // ── USD Ops ──
   if (d.chart_usd_ops && d.chart_usd_ops.meses && d.chart_usd_ops.meses.length > 0) {
     html += `<div class="section-label">Compras, ventas e inversiones USD — últimos 12 meses</div>
     <div class="caja-card"><div class="chart-wrap tall"><canvas id="chartUSDOps"></canvas></div></div>`;
   }
-
   document.getElementById('caja-app').innerHTML = html;
-
   // ── Render charts ──
   const CLRS = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#b07aa1'];
-
   if (billeteras.length > 0) {
     cajaCharts.billeteras = new Chart(document.getElementById('chartBilleteras'), {
       type: 'bar',
@@ -633,7 +711,6 @@ function renderCaja(d) {
       }
     });
   }
-
   if (d.chart_egresos && d.chart_egresos.meses.length > 0) {
     const ce = d.chart_egresos;
     cajaCharts.egresos = new Chart(document.getElementById('chartEgresos'), {
@@ -658,7 +735,6 @@ function renderCaja(d) {
       }
     });
   }
-
   if (d.chart_usd_ops && d.chart_usd_ops.meses.length > 0) {
     const cu = d.chart_usd_ops;
     cajaCharts.usdOps = new Chart(document.getElementById('chartUSDOps'), {
@@ -686,9 +762,7 @@ function renderCaja(d) {
   }
 }
 
-// ════════════════════════════════════════════════════════════════
-// STARTUP
-// ════════════════════════════════════════════════════════════════
+// ── STARTUP ───────────────────────────────────────────────────
 if (loadConfig()) {
   document.getElementById('main').style.display  = 'block';
   loadData();

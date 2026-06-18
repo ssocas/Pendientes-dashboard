@@ -119,6 +119,13 @@ body {
 .tag-venc.urgent { background: #fef2f2; color: #dc2626; }
 .tag-terc   { background: #eff6ff; color: #2563eb; }
 .tag-id     { background: #f3f4f6; color: #9ca3af; font-size: 9px; }
+.tag-select {
+  font-size: 10px; font-weight: 500; padding: 2px 6px 2px 7px; border-radius: 20px;
+  border: 1px solid #e5e7eb; background: #f3f4f6; color: #374151;
+  cursor: pointer; outline: none; max-width: 140px;
+}
+.tag-select:hover  { border-color: #6366f1; }
+.tag-select:focus  { border-color: #6366f1; }
 
 /* ── CALENDAR ── */
 .cal-day { margin-bottom: 12px; }
@@ -292,6 +299,8 @@ const CAT_COLORS = {
 const CAT_ORDER = Object.keys(CAT_COLORS);
 
 let ALL_TASKS = [], CAL_EVENTS = [], activeCat = 'Todas';
+const PRIO_OPTIONS   = ['🔴 Crítica', '🟠 Alta', '🟡 Media', '🟢 Baja'];
+const STATUS_OPTIONS = ['🆕 Nuevo', '🔄 Comenzado', '👁 Seguimiento', '📌 Largo Plazo', '✅ Terminado'];
 
 document.getElementById('date-line').textContent =
   new Date().toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -352,6 +361,16 @@ function prioCls(p) {
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function prioSelect(t) {
+  const opts = PRIO_OPTIONS.map(o =>
+    `<option value="${esc(o)}"${o===t.prio?' selected':''}>${esc(o)}</option>`).join('');
+  return `<select class="tag-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();changePrio(${t.id}, this.value)">${opts}</select>`;
+}
+function statusSelect(t) {
+  const opts = STATUS_OPTIONS.map(o =>
+    `<option value="${esc(o)}"${o===t.status?' selected':''}>${esc(o)}</option>`).join('');
+  return `<select class="tag-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();changeStatus(${t.id}, this.value)">${opts}</select>`;
+}
 
 function renderTask(t, extra='', controls=[]) {
   const isHoy = t.hoy === '⭐';
@@ -382,7 +401,8 @@ function renderTask(t, extra='', controls=[]) {
     </div>
     <div class="task-meta">
       <span class="tag tag-cat" style="border-left:2px solid ${cColor}">${esc(t.cat)}</span>
-      <span class="tag tag-status">${esc(normStatus(t.status))}</span>
+      ${prioSelect(t)}
+      ${statusSelect(t)}
       ${vTag}${tercTag}
       <span class="tag tag-id">#${t.id}</span>
     </div>
@@ -527,6 +547,61 @@ function toggleSemana(id) {
   postChange(id, { semana: newVal }).then(ok => {
     if (!ok) { t.semana = prevSemana; t.hoy = prevHoy; renderAll(); }
   });
+}
+
+function changePrio(id, val) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  const prev = t.prio;
+  t.prio = val; // optimista
+  renderAll();
+  postChange(id, { prio: val }).then(ok => {
+    if (!ok) { t.prio = prev; renderAll(); }
+  });
+}
+
+// "✅ Terminado" no es un cambio de campo simple: el Apps Script lo trata
+// como cierre (op "delete"), que fecha el cierre y mueve la fila a la
+// solapa Archivo. Por eso pasa por closeTask() con confirmación, en vez
+// de por postChange() como el resto de los valores de status.
+function changeStatus(id, val) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  if (val === '✅ Terminado') {
+    if (!confirm(`¿Marcar "${t.desc}" como Terminado?\n\nSe archivará y dejará de aparecer en Pendientes.`)) {
+      renderAll(); // revierte el <select> al valor actual (no se tocó t.status)
+      return;
+    }
+    closeTask(id);
+    return;
+  }
+  const prev = t.status;
+  t.status = val; // optimista
+  renderAll();
+  postChange(id, { status: val }).then(ok => {
+    if (!ok) { t.status = prev; renderAll(); }
+  });
+}
+
+async function closeTask(id) {
+  const t = ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+  const { url, token } = CFG;
+  const payload = { token, action: 'apply_changes', changes: [{ op: 'delete', id }] };
+  try {
+    const res  = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    ALL_TASKS = ALL_TASKS.filter(x => x.id !== id);
+    renderAll();
+  } catch (err) {
+    alert('No se pudo archivar la tarea: ' + err.message);
+    renderAll();
+  }
 }
 
 // ── LOAD ──────────────────────────────────────────────────────

@@ -62,7 +62,7 @@
     }
   ],
   "periodo": "2026-04",
-  "actualizado_al": "20/06/2026",
+  "actualizado_al": "21/06/2026",
   "saldo_ars": 4607407.180000002,
   "saldo_usd": 148100.33333333334,
   "promedio_semanal": 2290366.0888888887,
@@ -71,7 +71,7 @@
   "promedio_consumo_usd": -15237.094361334866,
   "total_usd": 148100.33333333334,
   "total_ctas_ctes_usd": "#N/A",
-  "generado": "21/06/2026 11:16",
+  "generado": "21/06/2026 11:48",
   "chart_egresos": {
     "meses": [
       "jul-25",

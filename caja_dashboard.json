@@ -2,9 +2,9 @@
   "caja_usd": [
     {
       "nombre": "SS",
-      "cash": 117532.26570048308,
+      "cash": 117532.265700483,
       "caja_seg": 0,
-      "total": 117532.26570048308
+      "total": 117532.265700483
     },
     {
       "nombre": "STS",
@@ -14,9 +14,9 @@
     },
     {
       "nombre": "Adolfito",
-      "cash": 10568.067632850241,
+      "cash": 10568.0676328502,
       "caja_seg": 0,
-      "total": 10568.067632850241
+      "total": 10568.0676328502
     },
     {
       "nombre": "Conceptual",
@@ -34,54 +34,58 @@
   "ctas_ctes_usd": [
     {
       "nombre": "Fede G. Berro",
-      "saldo": 0
+      "saldo": "#N/A"
     },
     {
       "nombre": "Sebas Perez Otero",
-      "saldo": 0
+      "saldo": "#N/A"
     },
     {
       "nombre": "Tommy Siedmann",
-      "saldo": 0
+      "saldo": "#N/A"
     },
     {
       "nombre": "Quinto Diseño",
-      "saldo": 0
+      "saldo": "#N/A"
     },
     {
       "nombre": "Los Rayos",
-      "saldo": -5000
+      "saldo": "#N/A"
     },
     {
       "nombre": "Conceptual",
-      "saldo": 0
+      "saldo": "#N/A"
+    },
+    {
+      "nombre": "Total Result",
+      "saldo": "#N/A"
     }
   ],
   "periodo": "2026-04",
   "actualizado_al": "21/06/2026",
-  "saldo_ars": 4607407.180000002,
-  "saldo_usd": 148100.33333333334,
-  "promedio_semanal": 2290366.0888888887,
-  "promedio_compraventa_usd": -5449.367088607594,
-  "promedio_inversiones_usd": -9787.727272727272,
-  "promedio_consumo_usd": -15237.094361334866,
-  "total_usd": 148100.33333333334,
-  "total_ctas_ctes_usd": -5000,
-  "generado": "21/06/2026 20:59",
+  "saldo_ars": 4607407.18,
+  "saldo_usd": 148100.333333333,
+  "promedio_semanal": 2290366.08888889,
+  "promedio_compraventa_usd": -5449.36708860759,
+  "promedio_inversiones_usd": -9787.72727272727,
+  "promedio_consumo_usd": -15237.0943613349,
+  "total_usd": 148100.333333333,
+  "total_ctas_ctes_usd": "#N/A",
+  "generado": "22/06/2026 09:53",
   "chart_egresos": {
     "meses": [
-      "jul-25",
-      "ago-25",
-      "sept-25",
-      "oct-25",
-      "nov-25",
-      "dic-25",
-      "ene-26",
-      "feb-26",
-      "mar-26",
-      "abr-26",
-      "may-26",
-      "jun-26"
+      "Jul-25",
+      "Aug-25",
+      "Sep-25",
+      "Oct-25",
+      "Nov-25",
+      "Dec-25",
+      "Jan-26",
+      "Feb-26",
+      "Mar-26",
+      "Apr-26",
+      "May-26",
+      "Jun-26"
     ],
     "categorias": [
       "Otros",
@@ -180,18 +184,18 @@
   },
   "chart_usd_ops": {
     "meses": [
-      "jul-25",
-      "ago-25",
-      "sept-25",
-      "oct-25",
-      "nov-25",
-      "dic-25",
-      "ene-26",
-      "feb-26",
-      "mar-26",
-      "abr-26",
-      "may-26",
-      "jun-26"
+      "Jul-25",
+      "Aug-25",
+      "Sep-25",
+      "Oct-25",
+      "Nov-25",
+      "Dec-25",
+      "Jan-26",
+      "Feb-26",
+      "Mar-26",
+      "Apr-26",
+      "May-26",
+      "Jun-26"
     ],
     "compra": [
       0.0,

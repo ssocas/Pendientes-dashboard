@@ -14,9 +14,9 @@
     },
     {
       "nombre": "Adolfito",
-      "cash": 10568.067632850241,
+      "cash": 9768.067632850241,
       "caja_seg": 0,
-      "total": 10568.067632850241
+      "total": 9768.067632850241
     },
     {
       "nombre": "Conceptual",
@@ -58,16 +58,16 @@
     }
   ],
   "periodo": "2026-04",
-  "actualizado_al": "23/06/2026",
+  "actualizado_al": "24/06/2026",
   "saldo_ars": 3855107.1800000016,
-  "saldo_usd": 153500.33333333334,
+  "saldo_usd": 152700.33333333334,
   "promedio_semanal": 2280433.8666666667,
-  "promedio_compraventa_usd": -5125,
-  "promedio_inversiones_usd": -9140.704225352112,
-  "promedio_consumo_usd": -14265.704225352112,
-  "total_usd": 153500.33333333334,
+  "promedio_compraventa_usd": -5064.7058823529405,
+  "promedio_inversiones_usd": -9013.75,
+  "promedio_consumo_usd": -14078.45588235294,
+  "total_usd": 152700.33333333334,
   "total_ctas_ctes_usd": -4900,
-  "generado": "24/06/2026 09:02",
+  "generado": "24/06/2026 09:13",
   "chart_egresos": {
     "meses": [
       "jul-25",

@@ -34,7 +34,7 @@
   "ctas_ctes_usd": [
     {
       "nombre": "Fede G. Berro",
-      "saldo": 0
+      "saldo": -800
     },
     {
       "nombre": "Sebas Perez Otero",
@@ -55,10 +55,14 @@
     {
       "nombre": "Conceptual",
       "saldo": 100
+    },
+    {
+      "nombre": "Enrique",
+      "saldo": -6100
     }
   ],
   "periodo": "2026-04",
-  "actualizado_al": "04/07/2026",
+  "actualizado_al": "05/07/2026",
   "saldo_ars": 1912107.1800000016,
   "saldo_usd": 142800.33333333334,
   "promedio_semanal": 2034530.7906976743,
@@ -66,8 +70,8 @@
   "promedio_inversiones_usd": -8012.222222222223,
   "promedio_consumo_usd": -14221.082981715894,
   "total_usd": 142800.33333333334,
-  "total_ctas_ctes_usd": -4900,
-  "generado": "05/07/2026 19:55",
+  "total_ctas_ctes_usd": -11800,
+  "generado": "05/07/2026 19:58",
   "chart_egresos": {
     "meses": [
       "jul-25",

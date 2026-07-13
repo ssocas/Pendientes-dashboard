@@ -63,15 +63,15 @@
   ],
   "periodo": "2026-04",
   "actualizado_al": "13/07/2026",
-  "saldo_ars": 28307.180000001565,
+  "saldo_ars": 123307.18000000156,
   "saldo_usd": 143900.33333333334,
-  "promedio_semanal": 1969034.9777777777,
+  "promedio_semanal": 1961646.0888888887,
   "promedio_compraventa_usd": -5770.588235294117,
   "promedio_inversiones_usd": -7459.6551724137935,
   "promedio_consumo_usd": -13230.24340770791,
   "total_usd": 143900.33333333334,
   "total_ctas_ctes_usd": -11800,
-  "generado": "13/07/2026 20:42",
+  "generado": "13/07/2026 20:55",
   "chart_egresos": {
     "meses": [
       "jul-25",
@@ -108,7 +108,7 @@
         1656000.0,
         2714400.0,
         2259000.0,
-        2800300.0
+        2705300.0
       ],
       "Visa Galicia": [
         0.0,

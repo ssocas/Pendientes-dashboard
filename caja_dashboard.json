@@ -2,9 +2,9 @@
   "caja_usd": [
     {
       "nombre": "SS",
-      "cash": 108032.26570048308,
+      "cash": 105232.26570048308,
       "caja_seg": 0,
-      "total": 108032.26570048308
+      "total": 105232.26570048308
     },
     {
       "nombre": "STS",
@@ -63,15 +63,15 @@
   ],
   "periodo": "2026-04",
   "actualizado_al": "15/07/2026",
-  "saldo_ars": 123307.18000000156,
-  "saldo_usd": 142000.33333333334,
-  "promedio_semanal": 1961646.0888888887,
-  "promedio_compraventa_usd": -5511.23595505618,
-  "promedio_inversiones_usd": -6890.121951219512,
-  "promedio_consumo_usd": -12401.35790627569,
-  "total_usd": 142000.33333333334,
+  "saldo_ars": -376692.81999999844,
+  "saldo_usd": 139200.33333333334,
+  "promedio_semanal": 1901905.033707865,
+  "promedio_compraventa_usd": -6256.578947368421,
+  "promedio_inversiones_usd": -7726.071428571428,
+  "promedio_consumo_usd": -13982.65037593985,
+  "total_usd": 139200.33333333334,
   "total_ctas_ctes_usd": -13200,
-  "generado": "15/07/2026 12:46",
+  "generado": "15/07/2026 13:36",
   "chart_egresos": {
     "meses": [
       "jul-25",
@@ -237,7 +237,7 @@
       -3800.0,
       -2800.0,
       0,
-      0
+      -2800.0
     ]
   }
 }

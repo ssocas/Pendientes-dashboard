@@ -2,9 +2,9 @@
   "caja_usd": [
     {
       "nombre": "SS",
-      "cash": 105532.26570048308,
+      "cash": 102177.26570048308,
       "caja_seg": 0,
-      "total": 105532.26570048308
+      "total": 102177.26570048308
     },
     {
       "nombre": "STS",
@@ -14,9 +14,9 @@
     },
     {
       "nombre": "Adolfito",
-      "cash": 9768.067632850241,
+      "cash": 9123.067632850241,
       "caja_seg": 0,
-      "total": 9768.067632850241
+      "total": 9123.067632850241
     },
     {
       "nombre": "Conceptual",
@@ -58,16 +58,16 @@
     }
   ],
   "periodo": "2026-04",
-  "actualizado_al": "27/07/2026",
-  "saldo_ars": 707.1800000015646,
-  "saldo_usd": 139500.33333333334,
-  "promedio_semanal": 1933588.0454545454,
-  "promedio_compraventa_usd": -6175.324675324675,
-  "promedio_inversiones_usd": -7635.176470588235,
-  "promedio_consumo_usd": -13810.50114591291,
-  "total_usd": 139500.33333333334,
+  "actualizado_al": "29/07/2026",
+  "saldo_ars": 618907.1800000016,
+  "saldo_usd": 135500.33333333334,
+  "promedio_semanal": 1887897.1999999997,
+  "promedio_compraventa_usd": -6401.666666666667,
+  "promedio_inversiones_usd": -8253.2,
+  "promedio_consumo_usd": -14654.866666666669,
+  "total_usd": 135500.33333333334,
   "total_ctas_ctes_usd": -11100,
-  "generado": "29/07/2026 15:12",
+  "generado": "30/07/2026 08:42",
   "chart_egresos": {
     "meses": [
       "jul-25",
@@ -219,7 +219,7 @@
       -5500.0,
       -5000.0,
       -6000.0,
-      0.0
+      -3355.0
     ],
     "inversiones": [
       0,

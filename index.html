@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — Santiago</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
 :root { color-scheme: light; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -710,12 +711,13 @@ async function loadCaja() {
 // Paleta de series
 const SERIE = { verde:'#1a9d5b', rojo:'#d64545', azul:'#4a78c2', naranja:'#e08e2b', gris:'#9aa0aa' };
 const CLRS  = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#b07aa1','#ff9da7','#9c755f','#bab0ac','#e15759','#7c7c7c'];
-function baseTicks() {
-  return { callback: v => 'US$ ' + fmt(v) };
-}
+// Etiqueta compacta para barras: miles con 1 decimal + "k" ('' si es chico)
+function kLbl(v){ if(v===null||v===undefined||isNaN(v)) return ''; if(Math.abs(v)<50) return ''; return (v/1000).toFixed(1)+'k'; }
+// ARS en miles, entero (para la tabla de gasto)
+function fmtMilesARS(n){ if(n===null||n===undefined||isNaN(n)) return '<span class="muted">-</span>'; return fmt(Math.round(n/1000)); }
 function renderCaja(d) {
-  const b   = d.balance   || {};
-  const pr  = d.proyeccion|| {};
+  const eb  = d.efectivo_bancos || {};
+  const pr  = d.proyeccion || {};
   const runway = pr.runway_meses;
   let rwCls = '';
   if (runway !== null && runway !== undefined) rwCls = runway < 3 ? 'red' : runway < 6 ? 'amber' : 'green';
@@ -723,37 +725,56 @@ function renderCaja(d) {
   let html = '';
   html += `<div class="caja-meta">Generado: ${esc(d.generado || d._sheet_updated || '-')}${d.asof ? ' · Datos al: ' + esc(d.asof) : ''} · en ${esc(d.base || 'USD')}</div>`;
 
-  // ── Hero: patrimonio neto + runway + liquidez ──
+  // ── Efectivo y Bancos ──
+  const sRow   = r => `<tr><td>${esc(r.cuenta)}</td><td>${esc(r.moneda)}</td><td>${fmt(Math.round(r.saldo))}</td><td>${fmtBase(r.valor_usd)}</td></tr>`;
+  const subRow = (label,v) => `<tr class="bold"><td>${label}</td><td></td><td></td><td>${fmtBase(v)}</td></tr>`;
+  const ef = eb.efectivo || {propias:[],custodia:[]};
+  const bk = eb.bancos   || {rows:[]};
+  let efBody = (ef.propias||[]).map(sRow).join('') + subRow('Subtotal propias', ef.subtotal_propias||0);
+  if ((ef.custodia||[]).length) efBody += (ef.custodia||[]).map(sRow).join('') + subRow('Subtotal custodia', ef.subtotal_custodia||0);
+  html += `<div class="section-label">Efectivo</div>
+  <div class="caja-card"><table class="caja-table">
+    <thead><tr><th>Cuenta</th><th>Mon.</th><th>Saldo</th><th>USD</th></tr></thead>
+    <tbody>${efBody}</tbody>
+  </table></div>`;
+  html += `<div class="section-label">Bancos</div>
+  <div class="caja-card"><table class="caja-table">
+    <thead><tr><th>Cuenta</th><th>Mon.</th><th>Saldo</th><th>USD</th></tr></thead>
+    <tbody>${(bk.rows||[]).map(sRow).join('')}${subRow('Total bancos', bk.total||0)}</tbody>
+  </table></div>`;
+
+  // ── Proyección: 2 tablas (mensual/anual) con totales en negrita ──
+  const Rr = pr.resultado || {}, Cc = pr.consumo || {};
+  const pRow  = (c,o) => `<tr><td>${c}</td><td>${fmtBase((o||{}).mes)}</td><td>${fmtBase((o||{}).anual)}</td></tr>`;
+  const pRowB = (c,o) => `<tr class="bold"><td>${c}</td><td>${fmtBase((o||{}).mes)}</td><td>${fmtBase((o||{}).anual)}</td></tr>`;
+  html += `<div class="section-label">Proyección <span style="font-weight:400;text-transform:none;color:#9ca3af">— prom. ${(pr.meses||[]).join(', ')}</span></div>
+  <div class="caja-card"><table class="caja-table">
+    <thead><tr><th>Resultado corriente</th><th>Mensual</th><th>Anual</th></tr></thead>
+    <tbody>
+      ${pRow('Ingresos corrientes', Rr.ingresos)}
+      ${pRow('Gasto (excl. inversiones)', Rr.gasto)}
+      ${pRowB('Resultado', Rr.resultado)}
+    </tbody>
+  </table></div>
+  <div class="caja-card"><table class="caja-table">
+    <thead><tr><th>Consumo de cajas USD</th><th>Mensual</th><th>Anual</th></tr></thead>
+    <tbody>
+      ${pRow('Venta USD (canje)', Cc.venta)}
+      ${pRow('Inversiones (desde cajas)', Cc.inv_cajas)}
+      ${pRowB('Consumo USD (venta + inv.)', Cc.consumo)}
+    </tbody>
+  </table></div>`;
+
+  // ── Runway / Liquidez / Consumo (cards) ──
   html += `<div class="metrics-grid">
-    ${metricCard('Patrimonio neto', fmtBase(b.patrimonio_neto), 'solo cuentas propias', 'hero')}
-    ${metricCard('Runway', runway!=null ? runway.toFixed(1) + ' meses' : '∞', 'liquidez / consumo USD', rwCls)}
-    ${metricCard('Liquidez (caja+bancos)', fmtBase(b.liquidez))}
+    ${metricCard('Liquidez (caja+bancos)', fmtBase(pr.liquidez))}
     ${metricCard('Consumo USD mensual', fmtBase(-(pr.consumo_usd_mensual||0)))}
+    ${metricCard('Runway', runway!=null ? runway.toFixed(1) + ' meses' : '∞', 'liquidez / consumo', rwCls)}
   </div>`;
-
-  // ── Alertas runway ──
   let alerts = '';
-  if (runway!=null && runway < 3)      alerts += `<div class="alert danger"><strong>Runway crítico:</strong> la liquidez cubre ~${runway.toFixed(1)} meses de consumo USD.</div>`;
-  else if (runway!=null && runway < 6) alerts += `<div class="alert warning"><strong>Runway bajo:</strong> la liquidez cubre ~${runway.toFixed(1)} meses de consumo USD.</div>`;
+  if (runway!=null && runway < 3)      alerts += `<div class="alert danger"><strong>Runway crítico:</strong> ~${runway.toFixed(1)} meses de consumo USD.</div>`;
+  else if (runway!=null && runway < 6) alerts += `<div class="alert warning"><strong>Runway bajo:</strong> ~${runway.toFixed(1)} meses de consumo USD.</div>`;
   if (alerts) html += `<div class="caja-alerts">${alerts}</div>`;
-
-  // ── Balance (Activos / Pasivos) ──
-  const balRow = r => `<tr class="${r.bold?'bold':''}"><td>${esc(r.k)}</td><td>${fmtBase(r.v)}</td></tr>`;
-  html += `<div class="section-label">Balance patrimonial</div>
-  <div class="balance-cols">
-    <div class="caja-card">
-      <table class="caja-table">
-        <thead><tr><th>Activos</th><th>USD</th></tr></thead>
-        <tbody>${(b.activos||[]).map(balRow).join('')}</tbody>
-      </table>
-    </div>
-    <div class="caja-card">
-      <table class="caja-table">
-        <thead><tr><th>Pasivos y patrimonio</th><th>USD</th></tr></thead>
-        <tbody>${(b.pasivos||[]).map(balRow).join('')}</tbody>
-      </table>
-    </div>
-  </div>`;
 
   // ── Charts (contenedores) ──
   const uc = d.usd_cash || {}, fl = d.flujo || {}, ir = d.ingresos_rubro || {}, er = d.egresos_rubro || {}, gc = d.gasto_categoria || {};
@@ -762,24 +783,14 @@ function renderCaja(d) {
   if ((ir.meses||[]).length) html += `<div class="section-label">Ingresos por rubro</div><div class="caja-card"><div class="chart-wrap"><canvas id="chIng"></canvas></div></div>`;
   if ((er.meses||[]).length) html += `<div class="section-label">Egresos por rubro (top 10)</div><div class="caja-card"><div class="chart-wrap tall"><canvas id="chEgr"></canvas></div></div>`;
   if ((gc.items||[]).length) {
-    html += `<div class="section-label">Gasto por categoría — ${gc.n_meses||6} meses completos</div>
+    const gh = Math.max(260, 26*gc.items.length);
+    html += `<div class="section-label">Gasto por categoría — promedio mensual (${gc.n_meses||6} meses)</div>
     <div class="caja-card">
-      <div class="chart-wrap tall"><canvas id="chGasto"></canvas></div>
+      <div class="chart-wrap" style="height:${gh}px"><canvas id="chGasto"></canvas></div>
       <table class="caja-table" style="margin-top:12px">
-        <thead><tr><th>Categoría</th><th>Total</th><th>Prom/mes</th></tr></thead>
-        <tbody>${gc.items.map(it=>`<tr><td>${esc(it.cat)}</td><td>${fmtBase(it.total)}</td><td>${fmtBase(it.prom)}</td></tr>`).join('')}</tbody>
-        <tfoot><tr><td>Total</td><td>${fmtBase(gc.total_periodo)}</td><td>${fmtBase(gc.prom_mensual)}</td></tr></tfoot>
-      </table>
-    </div>`;
-  }
-
-  // ── Proyección y runway (tabla) ──
-  if ((pr.rows||[]).length) {
-    html += `<div class="section-label">Proyección y runway <span style="font-weight:400;text-transform:none;color:#9ca3af">— prom. ${(pr.meses||[]).join(', ')}</span></div>
-    <div class="caja-card">
-      <table class="caja-table">
-        <thead><tr><th>Concepto</th><th>Semanal</th><th>Mensual</th><th>Anual</th></tr></thead>
-        <tbody>${pr.rows.map(r=>`<tr><td>${esc(r.c)}</td><td>${fmtBase(r.sem)}</td><td>${fmtBase(r.mes)}</td><td>${fmtBase(r.anual)}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>Categoría</th><th>Prom/mes USD</th><th>ARS (miles)</th></tr></thead>
+        <tbody>${gc.items.map(it=>`<tr><td>${esc(it.cat)}</td><td>${fmtBase(it.prom)}</td><td>${fmtMilesARS(it.prom_ars)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td>Total</td><td>${fmtBase(gc.prom_mensual)}</td><td>${fmtMilesARS(gc.prom_mensual_ars)}</td></tr></tfoot>
       </table>
     </div>`;
   }
@@ -789,9 +800,14 @@ function renderCaja(d) {
   // ════ Render charts (aislado: si Chart.js falla, las tablas ya quedaron arriba) ════
   if (typeof Chart === 'undefined') { console.warn('Chart.js no disponible'); return; }
   try {
-  const commonBar = (stacked=false) => ({
-    responsive:true, maintainAspectRatio:false,
+  if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
+  const DL_V  = { anchor:'end', align:'end', offset:1, clamp:true, font:{size:8,weight:'600'}, color:'#666', formatter:kLbl };
+  const DL_STK= { anchor:'center', align:'center', font:{size:8,weight:'600'}, color:'#fff', formatter:v=>Math.abs(v)>800?(v/1000).toFixed(1)+'k':'' };
+  const DL_H  = { anchor:'end', align:'right', offset:2, clamp:true, font:{size:8,weight:'600'}, color:'#555', formatter:kLbl };
+  const commonBar = (stacked=false, dl=DL_V) => ({
+    responsive:true, maintainAspectRatio:false, layout:{padding:{top:14,right:6}},
     plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:10, boxWidth:12 } },
+              datalabels: dl,
               tooltip:{ callbacks:{ label: ctx => ' ' + (ctx.dataset.label||'') + ': US$ ' + fmt(ctx.raw) } } },
     scales:{ x:{ stacked, grid:{display:false}, ticks:{ font:{size:10}, color:'#aaa' } },
              y:{ stacked, grid:{color:'#f0efeb'}, ticks:{ font:{size:10}, color:'#aaa', callback:v=>'US$ '+fmt(v) } } }
@@ -825,25 +841,25 @@ function renderCaja(d) {
     cajaCharts.ing = new Chart(document.getElementById('chIng'), {
       type:'bar',
       data:{ labels:ir.meses, datasets:(ir.categorias||[]).map(c=>({label:c, data:ir.series[c], backgroundColor:cols[c]||SERIE.gris})) },
-      options: commonBar(true)
+      options: commonBar(true, DL_STK)
     });
   }
   if ((er.meses||[]).length) {
     cajaCharts.egr = new Chart(document.getElementById('chEgr'), {
       type:'bar',
       data:{ labels:er.meses, datasets:(er.categorias||[]).map((c,i)=>({label:c, data:er.series[c], backgroundColor:CLRS[i%CLRS.length]})) },
-      options: commonBar(true)
+      options: commonBar(true, DL_STK)
     });
   }
   if ((gc.items||[]).length) {
-    const items = gc.items.slice().reverse(); // h-bar de menor a mayor de arriba a abajo
     cajaCharts.gasto = new Chart(document.getElementById('chGasto'), {
       type:'bar',
-      data:{ labels: items.map(it=>it.cat), datasets:[{ label:'Total', data: items.map(it=>Math.round(it.total)), backgroundColor:SERIE.azul, borderRadius:3 }] },
-      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>' US$ '+fmt(ctx.raw) } } },
+      data:{ labels: gc.items.map(it=>it.cat), datasets:[{ label:'Prom/mes', data: gc.items.map(it=>Math.round(it.prom)), backgroundColor:SERIE.azul, borderRadius:3 }] },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:34}},
+        plugins:{ legend:{display:false}, datalabels: DL_H,
+                  tooltip:{ callbacks:{ label: ctx=>' US$ '+fmt(ctx.raw) } } },
         scales:{ x:{ grid:{color:'#f0efeb'}, ticks:{ font:{size:10}, color:'#aaa', callback:v=>'US$ '+fmt(v) } },
-                 y:{ grid:{display:false}, ticks:{ font:{size:11}, color:'#555' } } } }
+                 y:{ grid:{display:false}, ticks:{ font:{size:10}, color:'#555', autoSkip:false } } } }
     });
   }
   } catch(e) { console.warn('charts:', e); }

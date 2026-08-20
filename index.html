@@ -715,6 +715,8 @@ const CLRS  = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#b07aa1','#ff9
 function kLbl(v){ if(v===null||v===undefined||isNaN(v)) return ''; if(Math.abs(v)<50) return ''; return (v/1000).toFixed(1)+'k'; }
 // ARS en miles, entero (para la tabla de gasto)
 function fmtMilesARS(n){ if(n===null||n===undefined||isNaN(n)) return '<span class="muted">-</span>'; return fmt(Math.round(n/1000)); }
+// Número plano (sin prefijo de moneda); negativos entre paréntesis. La columna indica la moneda.
+function fmtN(n){ if(n===null||n===undefined||isNaN(n)) return '<span class="muted">-</span>'; const s=fmt(Math.round(Math.abs(n))); return n<0?`<span class="neg">(${s})</span>`:s; }
 function renderCaja(d) {
   const eb  = d.efectivo_bancos || {};
   const pr  = d.proyeccion || {};
@@ -726,30 +728,30 @@ function renderCaja(d) {
   html += `<div class="caja-meta">Generado: ${esc(d.generado || d._sheet_updated || '-')}${d.asof ? ' · Datos al: ' + esc(d.asof) : ''} · en ${esc(d.base || 'USD')}</div>`;
 
   // ── Efectivo y Bancos ──
-  const sRow   = r => `<tr><td>${esc(r.cuenta)}</td><td>${esc(r.moneda)}</td><td>${fmt(Math.round(r.saldo))}</td><td>${fmtBase(r.valor_usd)}</td></tr>`;
-  const subRow = (label,v) => `<tr class="bold"><td>${label}</td><td></td><td></td><td>${fmtBase(v)}</td></tr>`;
+  const sRow   = r => `<tr><td>${esc(r.cuenta)}</td><td>${r.moneda==='ARS'?fmt(Math.round(r.saldo)):''}</td><td>${fmtN(r.valor_usd)}</td></tr>`;
+  const subRow = (label,v) => `<tr class="bold"><td>${label}</td><td></td><td>${fmtN(v)}</td></tr>`;
   const ef = eb.efectivo || {propias:[],custodia:[]};
   const bk = eb.bancos   || {rows:[]};
   let efBody = (ef.propias||[]).map(sRow).join('') + subRow('Subtotal propias', ef.subtotal_propias||0);
   if ((ef.custodia||[]).length) efBody += (ef.custodia||[]).map(sRow).join('') + subRow('Subtotal custodia', ef.subtotal_custodia||0);
   html += `<div class="section-label">Efectivo</div>
   <div class="caja-card"><table class="caja-table">
-    <thead><tr><th>Cuenta</th><th>Mon.</th><th>Saldo</th><th>USD</th></tr></thead>
+    <thead><tr><th>Cuenta</th><th>ARS</th><th>USD</th></tr></thead>
     <tbody>${efBody}</tbody>
   </table></div>`;
   html += `<div class="section-label">Bancos</div>
   <div class="caja-card"><table class="caja-table">
-    <thead><tr><th>Cuenta</th><th>Mon.</th><th>Saldo</th><th>USD</th></tr></thead>
+    <thead><tr><th>Cuenta</th><th>ARS</th><th>USD</th></tr></thead>
     <tbody>${(bk.rows||[]).map(sRow).join('')}${subRow('Total bancos', bk.total||0)}</tbody>
   </table></div>`;
 
   // ── Proyección: 2 tablas (mensual/anual) con totales en negrita ──
   const Rr = pr.resultado || {}, Cc = pr.consumo || {};
-  const pRow  = (c,o) => `<tr><td>${c}</td><td>${fmtBase((o||{}).mes)}</td><td>${fmtBase((o||{}).anual)}</td></tr>`;
-  const pRowB = (c,o) => `<tr class="bold"><td>${c}</td><td>${fmtBase((o||{}).mes)}</td><td>${fmtBase((o||{}).anual)}</td></tr>`;
+  const pRow  = (c,o) => `<tr><td>${c}</td><td>${fmtN((o||{}).mes)}</td><td>${fmtN((o||{}).anual)}</td></tr>`;
+  const pRowB = (c,o) => `<tr class="bold"><td>${c}</td><td>${fmtN((o||{}).mes)}</td><td>${fmtN((o||{}).anual)}</td></tr>`;
   html += `<div class="section-label">Proyección <span style="font-weight:400;text-transform:none;color:#9ca3af">— prom. ${(pr.meses||[]).join(', ')}</span></div>
   <div class="caja-card"><table class="caja-table">
-    <thead><tr><th>Resultado corriente</th><th>Mensual</th><th>Anual</th></tr></thead>
+    <thead><tr><th>Resultado corriente (USD)</th><th>Mensual</th><th>Anual</th></tr></thead>
     <tbody>
       ${pRow('Ingresos corrientes', Rr.ingresos)}
       ${pRow('Gasto (excl. inversiones)', Rr.gasto)}

@@ -886,18 +886,47 @@ function renderCaja(d) {
       pointBackgroundColor:'#111', pointBorderColor:'#fff', pointBorderWidth:1.5,
       datalabels:{ anchor:'end', align:'top', offset:2, color:'#111', font:{size:9,weight:'700'}, formatter:kLbl } });
 
+  // fuera de escala: acota el eje al 2º mes más extremo y etiqueta en ámbar lo que se corta
+  const capInfo = (meses, series, keys, net) => {
+    const posv = meses.map((_,i)=> keys.reduce((s,k)=>{const v=(series[k]||[])[i]||0; return s+(v>0?v:0);},0));
+    const negv = meses.map((_,i)=> keys.reduce((s,k)=>{const v=(series[k]||[])[i]||0; return s+(v<0?v:0);},0));
+    const permes = meses.map((_,i)=> Math.max(Math.abs(posv[i]),Math.abs(negv[i]),Math.abs(net[i]||0)));
+    const s = permes.filter(x=>x>0).sort((a,b)=>b-a);
+    let cap = s.length>1 ? s[1] : (s[0]||1000); cap = Math.max(cap,1000)*1.12;
+    return {posv, negv, HI:cap, LO:-cap};
+  };
+  const oosPlugin = (meses, posv, negv, net, HI, LO) => ({ id:'oos',
+    afterDatasetsDraw(chart){
+      const {ctx, chartArea:{top,bottom}, scales:{x}} = chart;
+      ctx.save(); ctx.textAlign='center'; ctx.font='700 9px system-ui,-apple-system,sans-serif';
+      meses.forEach((m,i)=>{ const cx=x.getPixelForValue(i);
+        if(posv[i]>HI){ ctx.fillStyle='#b8860b'; ctx.fillText('▲ '+fmt(Math.round(posv[i])), cx, top+9); }
+        if(negv[i]<LO){ ctx.fillStyle='#b8860b'; ctx.fillText('▼ '+fmt(Math.round(negv[i])), cx, bottom-3); }
+        const nv=net[i]; if(nv>HI||nv<LO){ ctx.fillStyle='#333'; ctx.fillText('Δ '+fmt(Math.round(nv)), cx, nv>HI?top+20:bottom-13); }
+      });
+      ctx.restore();
+    }});
+
   if (vMeses.length) {
+    const {posv, negv, HI, LO} = capInfo(vMeses, vSeries, vRub, vNet);
+    const netShown = vNet.map(v => (v>=LO && v<=HI) ? v : NaN);
     const ds = vRub.map(r => ({ label:r, data:vSeries[r], backgroundColor:RUBCOL[r]||'#888', stack:'r' }));
-    ds.push(NETDS(vNet));
+    ds.push(NETDS(netShown));
+    const opt = commonBar(true, DL_STK); opt.scales.y.min = LO; opt.scales.y.max = HI;
     cajaCharts.usd = new Chart(document.getElementById('chUsd'), {
-      type:'bar', data:{ labels:vMeses, datasets:ds }, options: commonBar(true, DL_STK)
+      type:'bar', data:{ labels:vMeses, datasets:ds }, options: opt,
+      plugins:[ oosPlugin(vMeses, posv, negv, vNet, HI, LO) ]
     });
   }
   if (ipMeses.length) {
+    const {posv, negv, HI, LO} = capInfo(ipMeses, ipSeries, ipProj, ipNet);
+    const netShown = ipNet.map(v => (v>=LO && v<=HI) ? v : NaN);
     const ds = ipProj.map((p,i) => ({ label:p, data:ipSeries[p], backgroundColor:PROJCOL[i%PROJCOL.length], stack:'p' }));
-    ds.push(Object.assign(NETDS(ipNet), {label:'Total'}));
+    ds.push(Object.assign(NETDS(netShown), {label:'Total'}));
+    const opt = commonBar(true, DL_STK); opt.scales.y.min = LO; opt.scales.y.max = HI;
     cajaCharts.inv = new Chart(document.getElementById('chInv'), {
-      type:'bar', data:{ labels:ipMeses, datasets:ds }, options: commonBar(true, DL_STK)
+      type:'bar', data:{ labels:ipMeses, datasets:ds }, options: opt,
+      plugins:[ oosPlugin(ipMeses, posv, negv, ipNet, HI, LO) ]
     });
   }
   if ((fl.meses||[]).length) {

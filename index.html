@@ -191,6 +191,7 @@ body {
 .caja-table tfoot td { padding: 9px 0 0; font-weight: 600; text-align: right; border-top: 0.5px solid #d0cfcc; }
 .caja-table tfoot td:first-child { text-align: left; }
 .neg { color: #b83232; }
+.pos { color: #1a9d5b; }
 .muted { color: #bbb; }
 .chart-wrap { position: relative; height: 220px; margin-top: 12px; }
 .chart-wrap.tall { height: 300px; }
@@ -781,11 +782,73 @@ function renderCaja(d) {
   if (alerts) html += `<div class="caja-alerts">${alerts}</div>`;
 
   // ── Charts (contenedores) ──
-  const uc = d.usd_cash || {}, fl = d.flujo || {}, ir = d.ingresos_rubro || {}, er = d.egresos_rubro || {}, gc = d.gasto_categoria || {};
-  if ((uc.meses||[]).length) html += `<div class="section-label">Variación de caja USD (efectivo USD + caja de seguridad)</div><div class="caja-card"><div class="chart-wrap"><canvas id="chUsd"></canvas></div></div>`;
-  if ((fl.meses||[]).length) html += `<div class="section-label">Flujo mensual (${esc(d.base||'USD')})</div><div class="caja-card"><div class="chart-wrap"><canvas id="chFlujo"></canvas></div></div>`;
-  if ((ir.meses||[]).length) html += `<div class="section-label">Ingresos por rubro</div><div class="caja-card"><div class="chart-wrap"><canvas id="chIng"></canvas></div></div>`;
-  if ((er.meses||[]).length) html += `<div class="section-label">Egresos por rubro (top 10)</div><div class="caja-card"><div class="chart-wrap tall"><canvas id="chEgr"></canvas></div></div>`;
+  const uc = d.usd_cash || {}, ipRaw = d.inv_proyectos || {}, fl = d.flujo || {},
+        ir = d.ingresos_rubro || {}, er = d.egresos_rubro || {}, gc = d.gasto_categoria || {};
+
+  // paletas (mismas que el tracker)
+  const RUBCOL = { 'Canje / Venta USD':'#3987e5','Aportes a inversiones':'#d95926',
+    'Retornos de inversiones':'#199e70','Flujos ctas. corrientes':'#c98500',
+    'Ingresos − gastos corr.':'#d55181','Broker (Aldazabal/caución)':'#008300',
+    'Otras cuentas propias':'#7E828F','Pago tarjetas':'#9085e9','Ajuste de arqueo':'#e66767' };
+  const ORDER_V = ['Ingresos − gastos corr.','Broker (Aldazabal/caución)','Flujos ctas. corrientes',
+    'Retornos de inversiones','Aportes a inversiones','Canje / Venta USD',
+    'Otras cuentas propias','Ajuste de arqueo'];
+  const PROJCOL = ['#3987e5','#d95926','#199e70','#c98500','#d55181','#9085e9','#e66767','#008300'];
+
+  // prep Variación: fusiona Pago tarjetas en Ingresos−gastos corr., reordena, deja activos
+  let vMeses = uc.meses||[], vNet = uc.net||[], vRub = [], vSeries = {};
+  if (vMeses.length) {
+    const s = {}; (uc.rubros||[]).forEach(r => s[r] = (uc.series[r]||[]).slice());
+    const ING = 'Ingresos − gastos corr.', PT = 'Pago tarjetas';
+    if (s[PT]) { if(!s[ING]) s[ING] = vMeses.map(()=>0);
+                 s[ING] = s[ING].map((v,i)=> v + (s[PT][i]||0)); delete s[PT]; }
+    vRub = ORDER_V.filter(r => s[r] && s[r].some(v => Math.abs(v) > 0.5));
+    vSeries = s;
+  }
+  // prep Inversiones por proyecto
+  const ipMeses = ipRaw.meses||[], ipProj = ipRaw.proyectos||[], ipSeries = ipRaw.series||{}, ipNet = ipRaw.net||[];
+
+  // helpers de tabla: monto con $, verde/rojo, — para cero; última fila en negrita
+  const moneyC = v => {
+    if (v===null||v===undefined||isNaN(v)) return '<span class="muted">-</span>';
+    if (Math.abs(v) < 0.5) return '<span class="muted">—</span>';
+    const s = '$ ' + fmt(Math.round(Math.abs(v)));
+    return v < 0 ? `<span class="neg">(${s})</span>` : `<span class="pos">${s}</span>`;
+  };
+  const tablaMes = (meses, rowsDef) => {
+    let h = `<table class="caja-table" style="margin-top:12px"><thead><tr><th>Rubro</th>${meses.map(m=>`<th>${esc(m)}</th>`).join('')}</tr></thead><tbody>`;
+    rowsDef.forEach(r => { h += `<tr class="${r.bold?'bold':''}"><td>${esc(r.name)}</td>${(r.vals||[]).map(v=>`<td>${moneyC(v)}</td>`).join('')}</tr>`; });
+    return h + `</tbody></table>`;
+  };
+  const chTitle = t => `<div style="font-weight:600;font-size:13px;color:#374151;margin:2px 0 0">${t}</div>`;
+  const chCap   = t => `<div style="font-size:11px;color:#9ca3af;margin:6px 2px 0;line-height:1.4">${t}</div>`;
+
+  // ══════ SECCIÓN A — FLUJO DE CAJA CUENTAS EN USD ══════
+  if (vMeses.length || ipMeses.length)
+    html += `<div class="section-label">Flujo de caja cuentas en USD</div>`;
+  if (vMeses.length) {
+    const rows = vRub.map(r => ({name:r, vals:vSeries[r]}));
+    rows.push({name:'Δ saldo (neto)', vals:vNet, bold:true});
+    html += `<div class="caja-card">${chTitle('Variación de Caja USD')}
+      <div class="chart-wrap tall"><canvas id="chUsd"></canvas></div>
+      ${chCap('Perímetro: Efectivo USD + Caja de Seguridad + Galicia USD + Galicia CERA + Elements. Cada mes, Δ saldo = suma de los rubros; positivo entra, negativo sale. El rombo es la variación neta.')}
+      ${tablaMes(vMeses, rows)}</div>`;
+  }
+  if (ipMeses.length) {
+    const rows = ipProj.map(p => ({name:p, vals:ipSeries[p]}));
+    rows.push({name:'Total neto', vals:ipNet, bold:true});
+    html += `<div class="caja-card">${chTitle('Inversiones (USD) — por proyecto')}
+      <div class="chart-wrap tall"><canvas id="chInv"></canvas></div>
+      ${chCap('Aportes hacia abajo, retornos / devoluciones de capital hacia arriba, por proyecto. El rombo es la inversión neta total del mes.')}
+      ${tablaMes(ipMeses, rows)}</div>`;
+  }
+
+  // ══════ SECCIÓN B — RESULTADOS ══════
+  if ((fl.meses||[]).length || (ir.meses||[]).length || (er.meses||[]).length)
+    html += `<div class="section-label" style="margin-top:8px">Resultados: Ingresos − egresos (últimos 6 meses)</div>`;
+  if ((fl.meses||[]).length) html += `<div class="caja-card">${chTitle('Resultados ('+esc(d.base||'USD')+')')}<div class="chart-wrap"><canvas id="chFlujo"></canvas></div>${chCap('Ingresos corrientes (+) vs gastos (−); Resultado = ingresos − gastos. Las inversiones no se incluyen acá — son despliegue de capital y se ven en Flujo de caja USD.')}</div>`;
+  if ((ir.meses||[]).length) html += `<div class="caja-card">${chTitle('Ingresos por rubro')}<div class="chart-wrap"><canvas id="chIng"></canvas></div></div>`;
+  if ((er.meses||[]).length) html += `<div class="caja-card">${chTitle('Egresos por rubro (top 10)')}<div class="chart-wrap tall"><canvas id="chEgr"></canvas></div></div>`;
   if ((gc.items||[]).length) {
     const gh = Math.max(260, 26*gc.items.length);
     html += `<div class="section-label">Gasto por categoría — promedio mensual (${gc.n_meses||6} meses)</div>
@@ -817,31 +880,40 @@ function renderCaja(d) {
              y:{ stacked, grid:{color:'#f0efeb'}, ticks:{ font:{size:10}, color:'#aaa', callback:v=>'US$ '+fmt(v) } } }
   });
 
-  if ((uc.meses||[]).length) {
+  // marcador de neto/total (rombo blanco), no se apila (stack propio)
+  const NETDS = (data) => ({ label:'Δ neto', data, type:'line', showLine:false, stack:'net',
+      pointStyle:'rectRot', pointRadius:6, pointHoverRadius:7,
+      pointBackgroundColor:'#111', pointBorderColor:'#fff', pointBorderWidth:1.5,
+      datalabels:{ anchor:'end', align:'top', offset:2, color:'#111', font:{size:9,weight:'700'}, formatter:kLbl } });
+
+  if (vMeses.length) {
+    const ds = vRub.map(r => ({ label:r, data:vSeries[r], backgroundColor:RUBCOL[r]||'#888', stack:'r' }));
+    ds.push(NETDS(vNet));
     cajaCharts.usd = new Chart(document.getElementById('chUsd'), {
-      type:'bar',
-      data:{ labels:uc.meses, datasets:[
-        {label:'Venta USD',   data:uc.venta_usd,   backgroundColor:SERIE.rojo},
-        {label:'Inversiones', data:uc.inversiones, backgroundColor:SERIE.naranja},
-        {label:'Total',       data:uc.total,       backgroundColor:SERIE.azul},
-      ]},
-      options: commonBar(false)
+      type:'bar', data:{ labels:vMeses, datasets:ds }, options: commonBar(true, DL_STK)
+    });
+  }
+  if (ipMeses.length) {
+    const ds = ipProj.map((p,i) => ({ label:p, data:ipSeries[p], backgroundColor:PROJCOL[i%PROJCOL.length], stack:'p' }));
+    ds.push(Object.assign(NETDS(ipNet), {label:'Total'}));
+    cajaCharts.inv = new Chart(document.getElementById('chInv'), {
+      type:'bar', data:{ labels:ipMeses, datasets:ds }, options: commonBar(true, DL_STK)
     });
   }
   if ((fl.meses||[]).length) {
     cajaCharts.flujo = new Chart(document.getElementById('chFlujo'), {
       type:'bar',
       data:{ labels:fl.meses, datasets:[
-        {label:'Ingresos',   data:fl.ingresos,                    backgroundColor:SERIE.verde},
-        {label:'Gastos',     data:(fl.gastos||[]).map(x=>-x),     backgroundColor:SERIE.rojo},
-        {label:'Resultado',  data:fl.resultado,                   backgroundColor:SERIE.azul},
-        {label:'Inversiones',data:(fl.inversiones||[]).map(x=>-x),backgroundColor:SERIE.naranja},
+        {label:'Ingresos',   data:fl.ingresos,                backgroundColor:SERIE.verde},
+        {label:'Gastos',     data:(fl.gastos||[]).map(x=>-x), backgroundColor:SERIE.rojo},
+        {label:'Resultado',  data:fl.resultado,               backgroundColor:SERIE.azul},
       ]},
       options: commonBar(false)
     });
   }
   if ((ir.meses||[]).length) {
-    const cols = { 'Ingresos Lola':SERIE.verde, 'Ingreso Los Rayos':'#2b8ce0', 'Otros':SERIE.gris };
+    const cols = { 'Ingresos Lola':SERIE.verde, 'Ingreso Los Rayos':'#2b8ce0',
+                   'Retribución sueldo Conceptual SS':'#d55181', 'Otros':SERIE.gris };
     cajaCharts.ing = new Chart(document.getElementById('chIng'), {
       type:'bar',
       data:{ labels:ir.meses, datasets:(ir.categorias||[]).map(c=>({label:c, data:ir.series[c], backgroundColor:cols[c]||SERIE.gris})) },

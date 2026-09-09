@@ -9,18 +9,18 @@
 <style>
 :root {
   color-scheme: dark;
-  --bg:        #0e0e1a;
-  --surface:   #1a1a2e;
-  --surface-2: #232342;
-  --surface-3: #2a2a4a;
-  --border:    #2c2c48;
-  --border-soft:#242440;
-  --text:      #e8e9f3;
-  --text-2:    #c4c7dc;
-  --muted:     #8b90ad;
-  --muted-2:   #6f7492;
-  --accent:    #818cf8;
-  --accent-2:  #a5b4fc;
+  --bg:        #17171a;
+  --surface:   #1f1f23;
+  --surface-2: #27272c;
+  --surface-3: #303036;
+  --border:    #35353c;
+  --border-soft:#2a2a2f;
+  --text:      #ededee;
+  --text-2:    #c7c7ca;
+  --muted:     #9a9aa0;
+  --muted-2:   #7a7a80;
+  --accent:    #d9a441;
+  --accent-2:  #e8bd6a;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -82,7 +82,7 @@ body {
 .section-title {
   display: flex; align-items: center; gap: 7px;
   font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .07em; color: var(--muted);
+  letter-spacing: .07em; color: var(--accent);
   margin-bottom: 8px; padding-bottom: 6px;
   border-bottom: 1.5px solid var(--border);
 }
@@ -197,6 +197,14 @@ body {
 .caja-card { background: var(--surface); border-radius: 10px; border: 1px solid var(--border-soft); padding: 16px; margin-bottom: 16px; }
 .balance-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 @media (max-width: 560px) { .balance-cols { grid-template-columns: 1fr; } }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+.caja-card.ctr { text-align: center; }
+.caja-card.ctr > * { max-width: 100%; }
+.tbl-wrap { display: inline-block; max-width: 100%; overflow-x: auto; text-align: left; vertical-align: top; }
+.ct-title { font-weight: 600; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
+.kpi-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.kpi-row .metric-card { flex: 1 1 150px; }
 .caja-table { width: auto; border-collapse: collapse; font-size: 13px; }
 .caja-table th, .caja-table td { padding-left: 24px; }
 .caja-table th:first-child, .caja-table td:first-child { padding-left: 0; }
@@ -220,7 +228,7 @@ body {
 .alert { border-radius: 8px; padding: 10px 14px; font-size: 12px; line-height: 1.5; }
 .alert.danger  { background: rgba(200,50,50,.14); color: #fca5a5; border: 1px solid rgba(200,50,50,.35); }
 .alert.warning { background: rgba(217,150,40,.14); color: #f0c674; border: 1px solid rgba(217,150,40,.35); }
-.section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1.5px solid var(--border); }
+.section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1.5px solid var(--border); }
 .caja-meta { font-size: 11px; color: var(--muted-2); margin-bottom: 16px; }
 /* ── STATES ── */
 .empty   { color: var(--muted); font-size: 12px; font-style: italic; padding: 6px 0; }
@@ -371,7 +379,7 @@ function renderForecast(d) {
     const body = (fc.rows || []).map(r => `<tr><td>${esc(r.linea)}</td>${(r.montos || []).map((v, i) => `<td class="${(r.fallback || [])[i] ? 'fc-fallback' : ''}">${arsCell(v)}</td>`).join('')}</tr>`).join('');
     const flujo = `<tr class="bold"><td>Flujo del día</td>${(fc.flujo || []).map(v => `<td>${arsCell(v)}</td>`).join('')}</tr>`;
     const saldo = `<tr class="bold"><td>Saldo proyectado</td>${(fc.saldo || []).map(v => `<td><span class="${v < cmin ? 'neg' : ''}">${fmt(Math.round(v))}</span></td>`).join('')}</tr>`;
-    html += `<div class="caja-card"><div style="overflow-x:auto"><table class="caja-table"><thead><tr>${head}</tr></thead><tbody>${body}${flujo}${saldo}</tbody></table></div>
+    html += `<div class="caja-card ctr"><div class="tbl-wrap"><table class="caja-table"><thead><tr>${head}</tr></thead><tbody>${body}${flujo}${saldo}</tbody></table></div>
       <div style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Montos en ARS. Las celdas <span style="background:rgba(224,176,74,.16);padding:0 5px;border-radius:3px">ámbar</span> usan un valor estimado (promedio de los últimos 3 meses) por falta de dato del vencimiento. Saldo en rojo = por debajo de la caja mínima.</div></div>`;
   }
 
@@ -382,19 +390,26 @@ function renderForecast(d) {
   } else {
     const rw = fl.runway_meses;
     const rwCls = (rw == null) ? 'green' : (rw < 3 ? 'red' : rw < 6 ? 'amber' : 'green');
-    html += `<div class="metrics-grid">
-      ${metricCard('Liquidez (caja+bancos)', fmtBase(fl.liquidez))}
-      ${metricCard('Consumo corriente mensual', fmtBase(-(fl.consumo_corriente_mes || 0)))}
-      ${metricCard('Runway', rw == null ? '&gt; 18 meses' : rw.toFixed(1) + ' meses', 'hasta perforar caja 0', rwCls)}
+    html += `<div class="kpi-row">
+      ${metricCard('Liquidez (caja USD)', fmtBase(fl.liquidez))}
+      ${metricCard('Consumo corriente USD/mes', fmtBase(fl.consumo_corriente_mes))}
+      ${metricCard('Aportes inversión /mes (próx 6m)', fmtBase(fl.aportes_mes_6m))}
+      ${metricCard('Retornos inversión /mes (próx 6m)', fmtBase(fl.retornos_mes_6m))}
+      ${metricCard('Runway', rw == null ? '&gt; 18 meses' : rw.toFixed(1) + ' meses', '', rwCls)}
     </div>`;
     if (rw != null && rw < 6) {
       const cls = rw < 3 ? 'danger' : 'warning';
-      html += `<div class="caja-alerts"><div class="alert ${cls}"><strong>Runway ${rw < 3 ? 'crítico' : 'bajo'}:</strong> ~${rw.toFixed(1)} meses de consumo corriente antes de agotar la liquidez.</div></div>`;
+      html += `<div class="caja-alerts"><div class="alert ${cls}"><strong>Runway ${rw < 3 ? 'crítico' : 'bajo'}:</strong> ~${rw.toFixed(1)} meses antes de que el saldo proyectado cruce 0.</div></div>`;
     }
-    const meses = fl.meses || [], si = fl.saldo_ini || [], sf = fl.saldo_fin || [];
-    const body = meses.map((m, i) => `<tr><td>${esc(m)}</td><td>${fmtBase(si[i])}</td><td>${fmtBase(sf[i])}</td></tr>`).join('');
-    html += `<div class="caja-card"><table class="caja-table"><thead><tr><th>Mes</th><th>Saldo inicial</th><th>Saldo final</th></tr></thead><tbody>${body}</tbody></table>
-      <div style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Supuestos: ingresos corr. ${fmtBase(fl.ing_c)}/mes, egresos corr. ${fmtBase(fl.egr_c)}/mes, aportes prom. 6m ${fmtBase(fl.aportes_mes_6m)}/mes, retornos prom. 6m ${fmtBase(fl.retornos_mes_6m)}/mes. Runway = mes en que el saldo proyectado perfora 0.</div></div>`;
+    const m6 = fl.meses6 || [], mat = fl.matriz || [];
+    if (m6.length && mat.length) {
+      const head = `<th>Concepto</th>` + m6.map(m => `<th>${esc(m)}</th>`).join('');
+      const bodyM = mat.map(r => `<tr class="${r.bold ? 'bold' : ''}"><td>${esc(r.name)}</td>${(r.vals||[]).map(v => `<td>${Math.abs(v) < 0.5 ? '<span class="muted">—</span>' : fmtBase(v)}</td>`).join('')}</tr>`).join('');
+      html += `<div class="caja-card ctr"><div class="tbl-wrap"><table class="caja-table"><thead><tr>${head}</tr></thead><tbody>${bodyM}</tbody></table></div>
+        <div style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Forecast de caja USD — próximos 6 meses (saldo inicial → flujos → saldo final). Runway = mes en que el saldo proyectado cruza 0. La proyección completa se edita en el Tracker → 📆 Forecast → Forecast anual.</div></div>`;
+    } else {
+      html += `<div class="caja-card"><div class="empty">Matriz de proyección no disponible (regenerá el feed).</div></div>`;
+    }
   }
 
   document.getElementById('forecast-app').innerHTML = html;
@@ -504,7 +519,7 @@ function renderTask(t, extra='', controls=[]) {
     const urg  = diff !== null && diff <= 2;
     vTag = `<span class="tag tag-venc${urg?' urgent':''}" title="${esc(t.venc)}">⏰ ${labelDays(diff)}</span>`;
   }
-  const cColor  = CAT_COLORS[t.cat] || '#b9bdd4';
+  const cColor  = CAT_COLORS[t.cat] || '#b0b0b5';
   const tercTag = t.tercero ? `<span class="tag tag-terc">👤 ${esc(t.tercero)}</span>` : '';
   let controlsHtml = '';
   if (controls.includes('star')) {
@@ -570,7 +585,7 @@ function buildFilterBar(tasks) {
   const used = CAT_ORDER.filter(c => tasks.some(t => t.cat === c));
   return ['Todas', ...used].map(c => {
     const cnt = c === 'Todas' ? tasks.length : tasks.filter(t => t.cat === c).length;
-    const col = c === 'Todas' ? '#6366f1' : (CAT_COLORS[c]||'#b9bdd4');
+    const col = c === 'Todas' ? '#6366f1' : (CAT_COLORS[c]||'#b0b0b5');
     const dot = c === 'Todas' ? '' : `<span class="fcat-dot" style="background:${col}"></span>`;
     return `<button class="fbtn${c===activeCat?' active':''}" onclick="setFilter('${esc(c)}')">${dot}${esc(c)} (${cnt})</button>`;
   }).join('');
@@ -612,14 +627,7 @@ function renderAll() {
     <div class="section-title"><span class="dot" style="background:#22c55e"></span>Radar de la semana<span class="badge">${semanaOnly.length}</span></div>
     ${semanaOnly.length ? semanaOnly.map(t=>renderTask(t,'',['star','bookmark','edit'])).join('') : '<div class="empty">Sin tareas en el radar semanal (fuera de las ya marcadas para hoy).</div>'}
   </div>`;
-  html += `<div class="section">
-    <div class="section-title"><span class="dot" style="background:#7c3aed"></span>Vencen en los próximos 7 días<span class="badge">${vencen.length}</span></div>
-    ${vencen.length ? vencen.map(t=>renderTask(t,' is-venc',['edit'])).join('') : '<div class="empty">Sin vencimientos próximos.</div>'}
-  </div>`;
-  html += `<div class="section">
-    <div class="section-title"><span class="dot" style="background:#6366f1"></span>Agenda próximos 7 días<span class="badge">${CAL_EVENTS.length}</span></div>
-    ${renderCalendar(CAL_EVENTS)}
-  </div>`;
+  // (Vencimientos 7d y Agenda 7d se muestran en la solapa Resumen)
   html += `<div class="section">
     <div class="section-title"><span class="dot" style="background:#9ca3af"></span>Todos los pendientes<span class="badge">${filtered.length}</span></div>
     <div class="filter-bar">${buildFilterBar(tasks)}</div>
@@ -857,14 +865,14 @@ function renderCaja(d) {
   const custRows = (ef.custodia||[]).map(sRow).join('');
   const tHead = `<thead><tr><th>Cuenta</th><th>ARS</th><th>USD</th></tr></thead>`;
   html += `<div class="section-label">Efectivo y bancos</div>
-  <div class="balance-cols">
-    <div class="caja-card">
-      <div style="font-weight:600;font-size:12px;color:var(--text-2);margin-bottom:8px">Propios</div>
-      <table class="caja-table">${tHead}<tbody>${propRows}${subRow('Total propio', propTot)}</tbody></table>
+  <div class="grid2">
+    <div class="caja-card ctr">
+      <div class="ct-title">Propios</div>
+      <div class="tbl-wrap"><table class="caja-table">${tHead}<tbody>${propRows}${subRow('Total propio', propTot)}</tbody></table></div>
     </div>
-    <div class="caja-card">
-      <div style="font-weight:600;font-size:12px;color:var(--text-2);margin-bottom:8px">En custodia (terceros)</div>
-      ${custRows ? `<table class="caja-table">${tHead}<tbody>${custRows}${subRow('Subtotal custodia', ef.subtotal_custodia||0)}</tbody></table>` : `<div class="empty">Sin saldos en custodia.</div>`}
+    <div class="caja-card ctr">
+      <div class="ct-title">En custodia (terceros)</div>
+      ${custRows ? `<div class="tbl-wrap"><table class="caja-table">${tHead}<tbody>${custRows}${subRow('Subtotal custodia', ef.subtotal_custodia||0)}</tbody></table></div>` : `<div class="empty">Sin saldos en custodia.</div>`}
     </div>
   </div>`;
 
@@ -909,36 +917,43 @@ function renderCaja(d) {
     rowsDef.forEach(r => { h += `<tr class="${r.bold?'bold':''}"><td>${esc(r.name)}</td>${(r.vals||[]).map(v=>`<td>${moneyC(v)}</td>`).join('')}</tr>`; });
     return h + `</tbody></table>`;
   };
-  const chTitle = t => `<div style="font-weight:600;font-size:13px;color:#c4c7dc;margin:2px 0 0">${t}</div>`;
+  const chTitle = t => `<div style="font-weight:600;font-size:13px;color:#c7c7ca;margin:2px 0 0">${t}</div>`;
   const chCap   = t => `<div style="font-size:11px;color:#9ca3af;margin:6px 2px 0;line-height:1.4">${t}</div>`;
 
   // ══════ SECCIÓN A — FLUJO DE CAJA CUENTAS EN USD ══════
   if (vMeses.length || ipMeses.length)
     html += `<div class="section-label">Flujo de caja cuentas en USD</div>`;
-  if (vMeses.length) {
-    const rows = vRub.map(r => ({name:r, vals:vSeries[r]}));
-    rows.push({name:'Δ saldo (neto)', vals:vNet, bold:true});
-    html += `<div class="caja-card">${chTitle('Variación de Caja USD')}
-      ${chCap('Perímetro: Efectivo USD + Caja de Seguridad + Galicia USD + Galicia CERA + Elements. Cada mes, Δ saldo = suma de los rubros; positivo entra, negativo sale. El rombo es la variación neta.')}
-      ${tablaMes(vMeses, rows)}</div>`;
-  }
-  if (ipMeses.length) {
-    const rows = ipProj.map(p => ({name:p, vals:ipSeries[p]}));
-    rows.push({name:'Total neto', vals:ipNet, bold:true});
-    html += `<div class="caja-card">${chTitle('Inversiones (USD) — por proyecto')}
-      ${chCap('Aportes hacia abajo, retornos / devoluciones de capital hacia arriba, por proyecto. El rombo es la inversión neta total del mes.')}
-      ${tablaMes(ipMeses, rows)}</div>`;
+  {
+    let a = '';
+    if (vMeses.length) {
+      const rows = vRub.map(r => ({name:r, vals:vSeries[r]}));
+      rows.push({name:'Δ saldo (neto)', vals:vNet, bold:true});
+      a += `<div class="caja-card ctr">${chTitle('Variación de Caja USD')}<div class="tbl-wrap">${tablaMes(vMeses, rows)}</div>${chCap('Perímetro: Efectivo USD + Caja de Seguridad + Galicia USD + Galicia CERA + Elements. Δ saldo = suma de los rubros; positivo entra, negativo sale.')}</div>`;
+    }
+    if (ipMeses.length) {
+      const rows = ipProj.map(p => ({name:p, vals:ipSeries[p]}));
+      rows.push({name:'Total neto', vals:ipNet, bold:true});
+      a += `<div class="caja-card ctr">${chTitle('Inversiones (USD) — por proyecto')}<div class="tbl-wrap">${tablaMes(ipMeses, rows)}</div>${chCap('Aportes (−) y retornos / devoluciones de capital (+) por proyecto, por mes. Total neto = inversión neta del mes.')}</div>`;
+    }
+    if (a) html += `<div class="grid2">${a}</div>`;
   }
 
   // ══════ SECCIÓN B — RESULTADOS ══════
   const r6 = d.resultados_6m || {};
   if ((fl.meses||[]).length || (ir.meses||[]).length || (er.meses||[]).length || (r6.rows||[]).length)
     html += `<div class="section-label" style="margin-top:8px">Resultados: Ingresos − egresos (últimos 6 meses)</div>`;
-  if ((r6.meses||[]).length && (r6.rows||[]).length)
-    html += `<div class="caja-card">${chTitle('Corriente / no corriente ('+esc(d.base||'USD')+')')}${tablaMes(r6.meses, r6.rows)}${chCap('Corriente = total − no corriente. Los no-corrientes (extraordinarios) se definen en el Tracker; el resto sale por diferencia.')}</div>`;
-  if ((fl.meses||[]).length) html += `<div class="caja-card">${chTitle('Resultados ('+esc(d.base||'USD')+')')}<div class="chart-wrap res"><canvas id="chFlujo"></canvas></div>${chCap('Ingresos corrientes (+) vs gastos (−); Resultado = ingresos − gastos. Las inversiones no se incluyen acá — son despliegue de capital y se ven en Flujo de caja USD.')}</div>`;
-  if ((ir.meses||[]).length) html += `<div class="caja-card">${chTitle('Ingresos por rubro')}<div class="chart-wrap res"><canvas id="chIng"></canvas></div></div>`;
-  if ((er.meses||[]).length) html += `<div class="caja-card">${chTitle('Egresos por rubro (top 10)')}<div class="chart-wrap res"><canvas id="chEgr"></canvas></div></div>`;
+  {
+    let b = '';
+    if ((fl.meses||[]).length) b += `<div class="caja-card">${chTitle('Resultados ('+esc(d.base||'USD')+')')}<div class="chart-wrap res"><canvas id="chFlujo"></canvas></div>${chCap('Ingresos corrientes (+) vs gastos (−); Resultado = ingresos − gastos. Las inversiones no se incluyen — se ven en Flujo de caja USD.')}</div>`;
+    if ((r6.meses||[]).length && (r6.rows||[]).length) b += `<div class="caja-card ctr">${chTitle('Corriente / no corriente ('+esc(d.base||'USD')+')')}<div class="tbl-wrap">${tablaMes(r6.meses, r6.rows)}</div>${chCap('Corriente = total − no corriente. Los no-corrientes (extraordinarios) se definen en el Tracker.')}</div>`;
+    if (b) html += `<div class="grid2">${b}</div>`;
+  }
+  {
+    let c = '';
+    if ((ir.meses||[]).length) c += `<div class="caja-card">${chTitle('Ingresos por rubro')}<div class="chart-wrap res"><canvas id="chIng"></canvas></div></div>`;
+    if ((er.meses||[]).length) c += `<div class="caja-card">${chTitle('Egresos por rubro (top 10)')}<div class="chart-wrap res"><canvas id="chEgr"></canvas></div></div>`;
+    if (c) html += `<div class="grid2">${c}</div>`;
+  }
   if ((gc.items||[]).length) {
     const gh = Math.max(260, 26*gc.items.length);
     html += `<div class="section-label">Gasto por categoría — promedio mensual (${gc.n_meses||6} meses)</div>
@@ -958,16 +973,16 @@ function renderCaja(d) {
   if (typeof Chart === 'undefined') { console.warn('Chart.js no disponible'); return; }
   try {
   if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
-  const DL_V  = { anchor:'end', align:'end', offset:1, clamp:true, font:{size:8,weight:'600'}, color:'#b9bdd4', formatter:kLbl };
+  const DL_V  = { anchor:'end', align:'end', offset:1, clamp:true, font:{size:8,weight:'600'}, color:'#b0b0b5', formatter:kLbl };
   const DL_STK= { anchor:'center', align:'center', font:{size:8,weight:'600'}, color:'#fff', formatter:v=>Math.abs(v)>800?(v/1000).toFixed(1)+'k':'' };
-  const DL_H  = { anchor:'end', align:'right', offset:2, clamp:true, font:{size:8,weight:'600'}, color:'#c4c7dc', formatter:kLbl };
+  const DL_H  = { anchor:'end', align:'right', offset:2, clamp:true, font:{size:8,weight:'600'}, color:'#c7c7ca', formatter:kLbl };
   const commonBar = (stacked=false, dl=DL_V) => ({
     responsive:true, maintainAspectRatio:false, layout:{padding:{top:14,right:6}},
     plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:10, boxWidth:12 } },
               datalabels: dl,
               tooltip:{ callbacks:{ label: ctx => ' ' + (ctx.dataset.label||'') + ': US$ ' + fmt(ctx.raw) } } },
-    scales:{ x:{ stacked, grid:{display:false}, ticks:{ font:{size:10}, color:'#8b90ad' } },
-             y:{ stacked, grid:{color:'rgba(255,255,255,.06)'}, ticks:{ font:{size:10}, color:'#8b90ad', callback:v=>'US$ '+fmt(v) } } }
+    scales:{ x:{ stacked, grid:{display:false}, ticks:{ font:{size:10}, color:'#9a9aa0' } },
+             y:{ stacked, grid:{color:'rgba(255,255,255,.06)'}, ticks:{ font:{size:10}, color:'#9a9aa0', callback:v=>'US$ '+fmt(v) } } }
   });
 
   // marcador de neto/total (rombo blanco), no se apila (stack propio)
@@ -1032,8 +1047,8 @@ function renderCaja(d) {
       options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:34}},
         plugins:{ legend:{display:false}, datalabels: DL_H,
                   tooltip:{ callbacks:{ label: ctx=>' US$ '+fmt(ctx.raw) } } },
-        scales:{ x:{ grid:{color:'rgba(255,255,255,.06)'}, ticks:{ font:{size:10}, color:'#8b90ad', callback:v=>'US$ '+fmt(v) } },
-                 y:{ grid:{display:false}, ticks:{ font:{size:10}, color:'#c4c7dc', autoSkip:false } } } }
+        scales:{ x:{ grid:{color:'rgba(255,255,255,.06)'}, ticks:{ font:{size:10}, color:'#9a9aa0', callback:v=>'US$ '+fmt(v) } },
+                 y:{ grid:{display:false}, ticks:{ font:{size:10}, color:'#c7c7ca', autoSkip:false } } } }
     });
   }
   } catch(e) { console.warn('charts:', e); }

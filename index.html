@@ -201,6 +201,12 @@ body {
 @media (max-width: 900px) { .pair-grid { grid-template-columns: 1fr; } }
 .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 4px; }
 @media (max-width: 900px) { .res-grid { grid-template-columns: 1fr; } }
+.bj-group { margin-bottom: 10px; }
+.bj-h { font-size: 11px; font-weight: 700; color: var(--text-2); margin: 4px 0 6px; }
+.bj-item { display: block; padding: 7px 10px; border-radius: 7px; background: var(--surface-2); margin-bottom: 5px; text-decoration: none; color: var(--text-2); font-size: 12px; line-height: 1.4; border-left: 3px solid var(--accent); }
+.bj-item:hover { background: var(--surface-3); }
+.bj-from { font-weight: 600; color: var(--text); }
+.bj-date { color: var(--muted-2); font-size: 11px; }
 .pair-cell { text-align: center; min-width: 0; }
 .tbl-wrap { display: inline-block; max-width: 100%; overflow-x: auto; text-align: left; vertical-align: top; }
 .ct-title { font-weight: 600; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
@@ -300,6 +306,7 @@ let forecastLoaded = false;
 let resumenLoaded = false;
 let pendientesLoaded = false;
 let RESUMEN_CAJA = {};
+let RESUMEN_BANDEJA = {};
 let cajaCharts = {};
 function loadConfig() {
   try { CFG = JSON.parse(localStorage.getItem(CFG_KEY)); } catch(e) { CFG = null; }
@@ -357,14 +364,16 @@ async function loadResumen() {
   document.getElementById('resumen-app').innerHTML = '<div class="loading">⏳ Cargando resumen...</div>';
   const { url, token } = CFG;
   try {
-    const [ra, rc] = await Promise.all([
+    const [ra, rc, rb] = await Promise.all([
       fetch(`${url}?token=${encodeURIComponent(token)}&action=get_all`).then(r => r.json()),
-      fetch(`${url}?token=${encodeURIComponent(token)}&action=get_caja&t=${Date.now()}`).then(r => r.json()).catch(() => ({}))
+      fetch(`${url}?token=${encodeURIComponent(token)}&action=get_caja&t=${Date.now()}`).then(r => r.json()).catch(() => ({})),
+      fetch(`${url}?token=${encodeURIComponent(token)}&action=get_bandeja&t=${Date.now()}`).then(r => r.json()).catch(() => ({}))
     ]);
     if (ra && ra.error) throw new Error(ra.error);
     ALL_TASKS  = (ra.tasks || []).map(t => ({ ...t, prio: normPrio(t.prio) }));
     CAL_EVENTS = ra.calendar || [];
     RESUMEN_CAJA = (rc && !rc.error) ? rc : {};
+    RESUMEN_BANDEJA = (rb && !rb.error && rb.buckets) ? rb : {};
     resumenLoaded = true;
     document.getElementById('sync-info').textContent =
       `Actualizado: ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} · ${ALL_TASKS.length} tareas · ${CAL_EVENTS.length} eventos`;
@@ -402,9 +411,28 @@ function renderResumen(d) {
     <div class="tasks-grid">${semanaOnly.length ? semanaOnly.map(t => renderTask(t, '', ['star', 'bookmark', 'edit'])).join('') : '<div class="empty">Sin tareas en el radar semanal (fuera de las de hoy).</div>'}</div></div>`;
 
   // ── Fila 3: Bandeja | Radar de tesis (placeholders hasta A2) ──
+  const bj = RESUMEN_BANDEJA || {};
+  const bjReady = !!(bj && bj.buckets);
+  const bjItem = it => `<a class="bj-item" href="${esc(it.link||'#')}" target="_blank" rel="noopener"><span class="bj-from">${esc(it.from||it.email||'')}</span> <span class="bj-date">· ${esc((it.date||'').slice(5,16))}</span><br><span class="bj-subj">${esc(it.subject||'')}</span></a>`;
+  let bandejaHtml, tesisHtml;
+  if (!bjReady) {
+    bandejaHtml = `<div class="caja-card"><div class="empty">Se activa cuando re-despliegues el Apps Script con la bandeja (A2).</div></div>`;
+    tesisHtml   = `<div class="caja-card"><div class="empty">Se activa con el radar de tesis (A2).</div></div>`;
+  } else {
+    const ORD = ['Finanzas','Contactos','Barrio','Seguridad'];
+    const ICON = { Finanzas:'💰', Contactos:'👤', Barrio:'🏘️', Seguridad:'🔒' };
+    let inner = '';
+    ORD.forEach(bk => { const arr = (bj.buckets[bk] || []); if (arr.length) inner += `<div class="bj-group"><div class="bj-h">${ICON[bk]||''} ${bk} <span class="badge">${arr.length}</span></div>${arr.map(bjItem).join('')}</div>`; });
+    const otros = bj.otros || [];
+    if (!inner && !otros.length) inner = `<div class="empty">Bandeja al día — nada para atender.</div>`;
+    if (otros.length) inner += `<details class="bj-group"><summary class="bj-h" style="cursor:pointer;list-style:revert">🗂️ Otros (revisar) <span class="badge">${otros.length}</span></summary><div style="margin-top:6px">${otros.map(bjItem).join('')}</div></details>`;
+    bandejaHtml = `<div class="caja-card" style="text-align:left">${inner}</div>`;
+    const mer = bj.mercado || [];
+    tesisHtml = `<div class="caja-card" style="text-align:left">${mer.length ? `<div class="bj-h">📈 Novedades de mercado · ${bj.generado ? esc(bj.generado.slice(5)) : ''} <span class="badge">${mer.length}</span></div>${mer.map(bjItem).join('')}<div class="cap" style="font-size:11px;color:var(--muted-2);margin-top:8px">La síntesis de tesis (paso con IA) se agrega como tarea programada.</div>` : '<div class="empty">Sin novedades de mercado recientes.</div>'}</div>`;
+  }
   html += `<div class="res-grid">
-    <div class="section"><div class="section-title"><span class="dot" style="background:#4a78c2"></span>Bandeja de entrada</div><div class="caja-card"><div class="empty">Se activa con la bandeja de emails (pendiente A2).</div></div></div>
-    <div class="section"><div class="section-title"><span class="dot" style="background:#7c3aed"></span>Radar de tesis</div><div class="caja-card"><div class="empty">Se activa con el radar de tesis (pendiente A2).</div></div></div>
+    <div class="section"><div class="section-title"><span class="dot" style="background:#4a78c2"></span>Bandeja de entrada${bjReady?`<span class="badge">${(bj.counts||{}).atender||0}</span>`:''}</div>${bandejaHtml}</div>
+    <div class="section"><div class="section-title"><span class="dot" style="background:#7c3aed"></span>Radar de tesis</div>${tesisHtml}</div>
   </div>`;
 
   // ── Fila 4: Finanzas y caja ──

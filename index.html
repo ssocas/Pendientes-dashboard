@@ -197,14 +197,17 @@ body {
 .caja-card { background: var(--surface); border-radius: 10px; border: 1px solid var(--border-soft); padding: 16px; margin-bottom: 16px; }
 .balance-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 @media (max-width: 560px) { .balance-cols { grid-template-columns: 1fr; } }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
-@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
-.caja-card.ctr { text-align: center; }
-.caja-card.ctr > * { max-width: 100%; }
+.pair-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+@media (max-width: 900px) { .pair-grid { grid-template-columns: 1fr; } }
+.res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 4px; }
+@media (max-width: 900px) { .res-grid { grid-template-columns: 1fr; } }
+.pair-cell { text-align: center; min-width: 0; }
 .tbl-wrap { display: inline-block; max-width: 100%; overflow-x: auto; text-align: left; vertical-align: top; }
 .ct-title { font-weight: 600; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
-.kpi-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
-.kpi-row .metric-card { flex: 1 1 150px; }
+.caja-card.hug { width: fit-content; max-width: 100%; margin-left: auto; margin-right: auto; text-align: center; }
+.cap { width: 0; min-width: 100%; }
+.kpi-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; justify-content: center; }
+.kpi-row .metric-card { flex: 0 1 auto; min-width: 140px; text-align: center; }
 .caja-table { width: auto; border-collapse: collapse; font-size: 13px; }
 .caja-table th, .caja-table td { padding-left: 24px; }
 .caja-table th:first-child, .caja-table td:first-child { padding-left: 0; }
@@ -295,6 +298,8 @@ let activeTab = 'pendientes';
 let cajaLoaded = false;
 let forecastLoaded = false;
 let resumenLoaded = false;
+let pendientesLoaded = false;
+let RESUMEN_CAJA = {};
 let cajaCharts = {};
 function loadConfig() {
   try { CFG = JSON.parse(localStorage.getItem(CFG_KEY)); } catch(e) { CFG = null; }
@@ -310,7 +315,7 @@ function saveConfig() {
   err.style.display = 'none';
   document.getElementById('setup').style.display = 'none';
   document.getElementById('main').style.display  = 'block';
-  loadData();
+  switchTab('resumen');
 }
 function showSetup() {
   if (CFG) {
@@ -333,6 +338,7 @@ function switchTab(tab) {
   if (tab === 'caja'     && !cajaLoaded)     loadCaja();
   if (tab === 'forecast' && !forecastLoaded) loadForecast();
   if (tab === 'resumen'  && !resumenLoaded)  loadResumen();
+  if (tab === 'pendientes' && !pendientesLoaded) loadData();
 }
 function refreshActive() {
   if (activeTab === 'pendientes') {
@@ -346,10 +352,73 @@ function refreshActive() {
   }
 }
 // ── STUBS (se completan en B3/B5) ──────────────────────────────
-function loadResumen() {
-  resumenLoaded = true;
-  document.getElementById('resumen-app').innerHTML =
-    '<div class="empty">🏠 Resumen — en construcción (B5).</div>';
+function rerender() { renderAll(); if (resumenLoaded) renderResumen(RESUMEN_CAJA); }
+async function loadResumen() {
+  document.getElementById('resumen-app').innerHTML = '<div class="loading">⏳ Cargando resumen...</div>';
+  const { url, token } = CFG;
+  try {
+    const [ra, rc] = await Promise.all([
+      fetch(`${url}?token=${encodeURIComponent(token)}&action=get_all`).then(r => r.json()),
+      fetch(`${url}?token=${encodeURIComponent(token)}&action=get_caja&t=${Date.now()}`).then(r => r.json()).catch(() => ({}))
+    ]);
+    if (ra && ra.error) throw new Error(ra.error);
+    ALL_TASKS  = (ra.tasks || []).map(t => ({ ...t, prio: normPrio(t.prio) }));
+    CAL_EVENTS = ra.calendar || [];
+    RESUMEN_CAJA = (rc && !rc.error) ? rc : {};
+    resumenLoaded = true;
+    document.getElementById('sync-info').textContent =
+      `Actualizado: ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} · ${ALL_TASKS.length} tareas · ${CAL_EVENTS.length} eventos`;
+    renderResumen(RESUMEN_CAJA);
+  } catch (err) {
+    document.getElementById('resumen-app').innerHTML =
+      `<div class="err-box">❌ ${esc(err.message)}<br><small>Verificá la URL y el token en ⚙</small></div>`;
+  }
+}
+function renderResumen(d) {
+  const tasks = ALL_TASKS || [];
+  const hoy        = tasks.filter(t => t.hoy === '⭐');
+  const semana     = tasks.filter(t => t.semana === '✅');
+  const semanaOnly = semana.filter(t => t.hoy !== '⭐');
+  const vencidas   = tasks.filter(t => { const dd = daysFrom(t.venc); return dd !== null && dd < 0; });
+  const venc7      = tasks.filter(t => { const dd = daysFrom(t.venc); return dd !== null && dd >= 0 && dd <= 7; });
+  const fc = d.forecast_corto || {};
+  const eb = d.efectivo_bancos || {};
+  const liq = ((eb.efectivo || {}).subtotal_propias || 0) + ((eb.bancos || {}).total || 0);
+  let html = '';
+
+  // ── Fila 1: Agenda+vencimientos | Foco de hoy ──
+  let ag = renderCalendar(CAL_EVENTS);
+  if (venc7.length) ag += `<div class="cal-day"><div class="cal-day-header">⏰ Vencimientos (tareas)</div>${venc7.map(t => `<div class="cal-event"><span class="cal-time">${esc(labelDays(daysFrom(t.venc)))}</span><span class="cal-title">${esc(t.desc)}</span></div>`).join('')}</div>`;
+  let foco = '';
+  if (vencidas.length) foco += `<div class="alert danger" style="margin-bottom:10px"><strong>⚠️ ${vencidas.length} vencida${vencidas.length > 1 ? 's' : ''}:</strong><br>${vencidas.map(t => esc(t.desc) + ' <span style="opacity:.75">(' + esc(labelDays(daysFrom(t.venc))) + ')</span>').join('<br>')}</div>`;
+  foco += hoy.length ? hoy.map(t => renderTask(t, '', ['star', 'edit'])).join('') : '<div class="empty">Sin tareas marcadas para hoy.</div>';
+  html += `<div class="res-grid">
+    <div class="section"><div class="section-title"><span class="dot" style="background:#d9a441"></span>Agenda y vencimientos · 7 días<span class="badge">${CAL_EVENTS.length + venc7.length}</span></div>${ag}</div>
+    <div class="section"><div class="section-title"><span class="dot" style="background:#d97706"></span>Foco de hoy<span class="badge">${hoy.length}</span></div>${foco}</div>
+  </div>`;
+
+  // ── Fila 2: Radar de la semana (2 columnas, editable) ──
+  html += `<div class="section"><div class="section-title"><span class="dot" style="background:#22c55e"></span>Radar de la semana<span class="badge">${semanaOnly.length}</span></div>
+    <div class="tasks-grid">${semanaOnly.length ? semanaOnly.map(t => renderTask(t, '', ['star', 'bookmark', 'edit'])).join('') : '<div class="empty">Sin tareas en el radar semanal (fuera de las de hoy).</div>'}</div></div>`;
+
+  // ── Fila 3: Bandeja | Radar de tesis (placeholders hasta A2) ──
+  html += `<div class="res-grid">
+    <div class="section"><div class="section-title"><span class="dot" style="background:#4a78c2"></span>Bandeja de entrada</div><div class="caja-card"><div class="empty">Se activa con la bandeja de emails (pendiente A2).</div></div></div>
+    <div class="section"><div class="section-title"><span class="dot" style="background:#7c3aed"></span>Radar de tesis</div><div class="caja-card"><div class="empty">Se activa con el radar de tesis (pendiente A2).</div></div></div>
+  </div>`;
+
+  // ── Fila 4: Finanzas y caja ──
+  const bad = (fc.smin != null && fc.caja_minima != null && fc.smin < fc.caja_minima);
+  let fin = `<div class="kpi-row">
+    ${metricCard('Liquidez propia (caja+bancos)', fmtBase(liq))}
+    ${fc.b0 != null ? metricCard('Caja ARS hoy', '$ ' + fmt(Math.round(fc.b0))) : ''}
+    ${fc.smin != null ? metricCard('Saldo mínimo proyectado', '$ ' + fmt(Math.round(fc.smin)), fc.window ? ('próx. ' + fc.window + 'd') : '', bad ? 'red' : 'green') : ''}
+    ${fc.caja_minima != null ? metricCard('Caja mínima', '$ ' + fmt(Math.round(fc.caja_minima))) : ''}
+  </div>`;
+  if (bad) fin += `<div class="caja-alerts"><div class="alert danger"><strong>Caja corta:</strong> vender ~US$ ${fmt(Math.round(fc.usd_vender || 0))} para no perforar la caja mínima.</div></div>`;
+  html += `<div class="section"><div class="section-title"><span class="dot" style="background:#1a9d5b"></span>Finanzas y caja</div>${fin}</div>`;
+
+  document.getElementById('resumen-app').innerHTML = html;
 }
 function renderForecast(d) {
   const fc = d.forecast_corto || {}, fl = d.forecast_largo || {};
@@ -363,7 +432,7 @@ function renderForecast(d) {
   } else {
     const cmin = fc.caja_minima || 0, smin = fc.smin, b0 = fc.b0;
     const bad = (smin != null && smin < cmin);
-    html += `<div class="metrics-grid">
+    html += `<div class="kpi-row">
       ${metricCard('Saldo inicial (hoy)', '$ ' + fmt(Math.round(b0)))}
       ${metricCard('Saldo mínimo proyectado', '$ ' + fmt(Math.round(smin)), '', bad ? 'red' : 'green')}
       ${metricCard('Caja mínima', '$ ' + fmt(Math.round(cmin)))}
@@ -379,8 +448,8 @@ function renderForecast(d) {
     const body = (fc.rows || []).map(r => `<tr><td>${esc(r.linea)}</td>${(r.montos || []).map((v, i) => `<td class="${(r.fallback || [])[i] ? 'fc-fallback' : ''}">${arsCell(v)}</td>`).join('')}</tr>`).join('');
     const flujo = `<tr class="bold"><td>Flujo del día</td>${(fc.flujo || []).map(v => `<td>${arsCell(v)}</td>`).join('')}</tr>`;
     const saldo = `<tr class="bold"><td>Saldo proyectado</td>${(fc.saldo || []).map(v => `<td><span class="${v < cmin ? 'neg' : ''}">${fmt(Math.round(v))}</span></td>`).join('')}</tr>`;
-    html += `<div class="caja-card ctr"><div class="tbl-wrap"><table class="caja-table"><thead><tr>${head}</tr></thead><tbody>${body}${flujo}${saldo}</tbody></table></div>
-      <div style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Montos en ARS. Las celdas <span style="background:rgba(224,176,74,.16);padding:0 5px;border-radius:3px">ámbar</span> usan un valor estimado (promedio de los últimos 3 meses) por falta de dato del vencimiento. Saldo en rojo = por debajo de la caja mínima.</div></div>`;
+    html += `<div class="caja-card hug"><div class="tbl-wrap"><table class="caja-table"><thead><tr>${head}</tr></thead><tbody>${body}${flujo}${saldo}</tbody></table></div>
+      <div class="cap" style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Montos en ARS. Las celdas <span style="background:rgba(224,176,74,.16);padding:0 5px;border-radius:3px">ámbar</span> usan un valor estimado (promedio de los últimos 3 meses) por falta de dato del vencimiento. Saldo en rojo = por debajo de la caja mínima.</div></div>`;
   }
 
   // ───── LARGO PLAZO (USD, 18m) ─────
@@ -405,8 +474,8 @@ function renderForecast(d) {
     if (m6.length && mat.length) {
       const head = `<th>Concepto</th>` + m6.map(m => `<th>${esc(m)}</th>`).join('');
       const bodyM = mat.map(r => `<tr class="${r.bold ? 'bold' : ''}"><td>${esc(r.name)}</td>${(r.vals||[]).map(v => `<td>${Math.abs(v) < 0.5 ? '<span class="muted">—</span>' : fmtBase(v)}</td>`).join('')}</tr>`).join('');
-      html += `<div class="caja-card ctr"><div class="tbl-wrap"><table class="caja-table"><thead><tr>${head}</tr></thead><tbody>${bodyM}</tbody></table></div>
-        <div style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Forecast de caja USD — próximos 6 meses (saldo inicial → flujos → saldo final). Runway = mes en que el saldo proyectado cruza 0. La proyección completa se edita en el Tracker → 📆 Forecast → Forecast anual.</div></div>`;
+      html += `<div class="caja-card hug"><div class="tbl-wrap"><table class="caja-table"><thead><tr>${head}</tr></thead><tbody>${bodyM}</tbody></table></div>
+        <div class="cap" style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Forecast de caja USD — próximos 6 meses (saldo inicial → flujos → saldo final). Runway = mes en que el saldo proyectado cruza 0. La proyección completa se edita en el Tracker → 📆 Forecast → Forecast anual.</div></div>`;
     } else {
       html += `<div class="caja-card"><div class="empty">Matriz de proyección no disponible (regenerá el feed).</div></div>`;
     }
@@ -590,7 +659,7 @@ function buildFilterBar(tasks) {
     return `<button class="fbtn${c===activeCat?' active':''}" onclick="setFilter('${esc(c)}')">${dot}${esc(c)} (${cnt})</button>`;
   }).join('');
 }
-function setFilter(cat) { activeCat = cat; renderAll(); }
+function setFilter(cat) { activeCat = cat; rerender(); }
 function renderAll() {
   const tasks   = ALL_TASKS;
   const hoy     = tasks.filter(t => t.hoy === '⭐');
@@ -663,9 +732,9 @@ function toggleHoy(id) {
   const prevHoy = t.hoy;
   const newVal  = prevHoy === '⭐' ? '☆' : '⭐';
   t.hoy = newVal; // optimista
-  renderAll();
+  rerender();
   postChange(id, { hoy: newVal }).then(ok => {
-    if (!ok) { t.hoy = prevHoy; renderAll(); }
+    if (!ok) { t.hoy = prevHoy; rerender(); }
   });
 }
 function toggleSemana(id) {
@@ -675,9 +744,9 @@ function toggleSemana(id) {
   const newVal = prevSemana === '✅' ? '—' : '✅';
   t.semana = newVal;
   if (newVal !== '✅') t.hoy = '☆';
-  renderAll();
+  rerender();
   postChange(id, { semana: newVal }).then(ok => {
-    if (!ok) { t.semana = prevSemana; t.hoy = prevHoy; renderAll(); }
+    if (!ok) { t.semana = prevSemana; t.hoy = prevHoy; rerender(); }
   });
 }
 function changePrio(id, val) {
@@ -685,14 +754,14 @@ function changePrio(id, val) {
   if (!t) return;
   const prev = t.prio;
   t.prio = val; // optimista
-  renderAll();
+  rerender();
   postChange(id, { prio: val }).then(ok => {
-    if (!ok) { t.prio = prev; renderAll(); }
+    if (!ok) { t.prio = prev; rerender(); }
   });
 }
 function toggleEdit(id) {
   editingId = (editingId === id) ? null : id;
-  renderAll();
+  rerender();
 }
 function saveField(id, field, value) {
   const t = ALL_TASKS.find(x => x.id === id);
@@ -700,9 +769,9 @@ function saveField(id, field, value) {
   const prev = t[field];
   if (prev === value) return;
   t[field] = value; // optimista
-  renderAll();
+  rerender();
   postChange(id, { [field]: value }).then(ok => {
-    if (!ok) { t[field] = prev; renderAll(); }
+    if (!ok) { t[field] = prev; rerender(); }
   });
 }
 async function postAdd(fields) {
@@ -745,7 +814,7 @@ function changeStatus(id, val) {
   if (!t) return;
   if (val === '✅ Terminado') {
     if (!confirm(`¿Marcar "${t.desc}" como Terminado?\n\nSe archivará y dejará de aparecer en Pendientes.`)) {
-      renderAll();
+      rerender();
       return;
     }
     closeTask(id);
@@ -753,9 +822,9 @@ function changeStatus(id, val) {
   }
   const prev = t.status;
   t.status = val; // optimista
-  renderAll();
+  rerender();
   postChange(id, { status: val }).then(ok => {
-    if (!ok) { t.status = prev; renderAll(); }
+    if (!ok) { t.status = prev; rerender(); }
   });
 }
 async function closeTask(id) {
@@ -772,10 +841,10 @@ async function closeTask(id) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     ALL_TASKS = ALL_TASKS.filter(x => x.id !== id);
-    renderAll();
+    rerender();
   } catch (err) {
     alert('No se pudo archivar la tarea: ' + err.message);
-    renderAll();
+    rerender();
   }
 }
 // ── LOAD ──────────────────────────────────────────────────────
@@ -788,9 +857,10 @@ async function loadData() {
     if (data.error) throw new Error(data.error);
     ALL_TASKS  = (data.tasks    || []).map(t => ({ ...t, prio: normPrio(t.prio) }));
     CAL_EVENTS = data.calendar  || [];
+    pendientesLoaded = true;
     document.getElementById('sync-info').textContent =
       `Actualizado: ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} · ${ALL_TASKS.length} tareas · ${CAL_EVENTS.length} eventos`;
-    renderAll();
+    rerender();
   } catch(err) {
     document.getElementById('app').innerHTML =
       `<div class="err-box">❌ ${esc(err.message)}<br><small>Verificá la URL y el token en ⚙</small></div>`;
@@ -865,16 +935,16 @@ function renderCaja(d) {
   const custRows = (ef.custodia||[]).map(sRow).join('');
   const tHead = `<thead><tr><th>Cuenta</th><th>ARS</th><th>USD</th></tr></thead>`;
   html += `<div class="section-label">Efectivo y bancos</div>
-  <div class="grid2">
-    <div class="caja-card ctr">
+  <div class="caja-card"><div class="pair-grid">
+    <div class="pair-cell">
       <div class="ct-title">Propios</div>
       <div class="tbl-wrap"><table class="caja-table">${tHead}<tbody>${propRows}${subRow('Total propio', propTot)}</tbody></table></div>
     </div>
-    <div class="caja-card ctr">
+    <div class="pair-cell">
       <div class="ct-title">En custodia (terceros)</div>
       ${custRows ? `<div class="tbl-wrap"><table class="caja-table">${tHead}<tbody>${custRows}${subRow('Subtotal custodia', ef.subtotal_custodia||0)}</tbody></table></div>` : `<div class="empty">Sin saldos en custodia.</div>`}
     </div>
-  </div>`;
+  </div></div>`;
 
   // ── (Proyección / runway / consumo USD movidos a la solapa Forecast) ──
 
@@ -918,24 +988,24 @@ function renderCaja(d) {
     return h + `</tbody></table>`;
   };
   const chTitle = t => `<div style="font-weight:600;font-size:13px;color:#c7c7ca;margin:2px 0 0">${t}</div>`;
-  const chCap   = t => `<div style="font-size:11px;color:#9ca3af;margin:6px 2px 0;line-height:1.4">${t}</div>`;
+  const chCap   = t => `<div class="cap" style="font-size:11px;color:var(--muted-2);margin:6px 2px 0;line-height:1.4">${t}</div>`;
 
   // ══════ SECCIÓN A — FLUJO DE CAJA CUENTAS EN USD ══════
   if (vMeses.length || ipMeses.length)
     html += `<div class="section-label">Flujo de caja cuentas en USD</div>`;
   {
-    let a = '';
+    let cells = '';
     if (vMeses.length) {
       const rows = vRub.map(r => ({name:r, vals:vSeries[r]}));
       rows.push({name:'Δ saldo (neto)', vals:vNet, bold:true});
-      a += `<div class="caja-card ctr">${chTitle('Variación de Caja USD')}<div class="tbl-wrap">${tablaMes(vMeses, rows)}</div>${chCap('Perímetro: Efectivo USD + Caja de Seguridad + Galicia USD + Galicia CERA + Elements. Δ saldo = suma de los rubros; positivo entra, negativo sale.')}</div>`;
+      cells += `<div class="pair-cell">${chTitle('Variación de Caja USD')}<div class="tbl-wrap">${tablaMes(vMeses, rows)}</div>${chCap('Perímetro: Efectivo USD + Caja de Seguridad + Galicia USD + Galicia CERA + Elements. Δ saldo = suma de los rubros; positivo entra, negativo sale.')}</div>`;
     }
     if (ipMeses.length) {
       const rows = ipProj.map(p => ({name:p, vals:ipSeries[p]}));
       rows.push({name:'Total neto', vals:ipNet, bold:true});
-      a += `<div class="caja-card ctr">${chTitle('Inversiones (USD) — por proyecto')}<div class="tbl-wrap">${tablaMes(ipMeses, rows)}</div>${chCap('Aportes (−) y retornos / devoluciones de capital (+) por proyecto, por mes. Total neto = inversión neta del mes.')}</div>`;
+      cells += `<div class="pair-cell">${chTitle('Inversiones (USD) — por proyecto')}<div class="tbl-wrap">${tablaMes(ipMeses, rows)}</div>${chCap('Aportes (−) y retornos / devoluciones de capital (+) por proyecto, por mes. Total neto = inversión neta del mes.')}</div>`;
     }
-    if (a) html += `<div class="grid2">${a}</div>`;
+    if (cells) html += `<div class="caja-card"><div class="pair-grid">${cells}</div></div>`;
   }
 
   // ══════ SECCIÓN B — RESULTADOS ══════
@@ -943,16 +1013,16 @@ function renderCaja(d) {
   if ((fl.meses||[]).length || (ir.meses||[]).length || (er.meses||[]).length || (r6.rows||[]).length)
     html += `<div class="section-label" style="margin-top:8px">Resultados: Ingresos − egresos (últimos 6 meses)</div>`;
   {
-    let b = '';
-    if ((fl.meses||[]).length) b += `<div class="caja-card">${chTitle('Resultados ('+esc(d.base||'USD')+')')}<div class="chart-wrap res"><canvas id="chFlujo"></canvas></div>${chCap('Ingresos corrientes (+) vs gastos (−); Resultado = ingresos − gastos. Las inversiones no se incluyen — se ven en Flujo de caja USD.')}</div>`;
-    if ((r6.meses||[]).length && (r6.rows||[]).length) b += `<div class="caja-card ctr">${chTitle('Corriente / no corriente ('+esc(d.base||'USD')+')')}<div class="tbl-wrap">${tablaMes(r6.meses, r6.rows)}</div>${chCap('Corriente = total − no corriente. Los no-corrientes (extraordinarios) se definen en el Tracker.')}</div>`;
-    if (b) html += `<div class="grid2">${b}</div>`;
+    let cells = '';
+    if ((fl.meses||[]).length) cells += `<div class="pair-cell">${chTitle('Resultados ('+esc(d.base||'USD')+')')}<div class="chart-wrap res"><canvas id="chFlujo"></canvas></div>${chCap('Ingresos corrientes (+) vs gastos (−); Resultado = ingresos − gastos. Las inversiones no se incluyen — se ven en Flujo de caja USD.')}</div>`;
+    if ((r6.meses||[]).length && (r6.rows||[]).length) cells += `<div class="pair-cell">${chTitle('Corriente / no corriente ('+esc(d.base||'USD')+')')}<div class="tbl-wrap">${tablaMes(r6.meses, r6.rows)}</div>${chCap('Corriente = total − no corriente. Los no-corrientes (extraordinarios) se definen en el Tracker.')}</div>`;
+    if (cells) html += `<div class="caja-card"><div class="pair-grid">${cells}</div></div>`;
   }
   {
-    let c = '';
-    if ((ir.meses||[]).length) c += `<div class="caja-card">${chTitle('Ingresos por rubro')}<div class="chart-wrap res"><canvas id="chIng"></canvas></div></div>`;
-    if ((er.meses||[]).length) c += `<div class="caja-card">${chTitle('Egresos por rubro (top 10)')}<div class="chart-wrap res"><canvas id="chEgr"></canvas></div></div>`;
-    if (c) html += `<div class="grid2">${c}</div>`;
+    let cells = '';
+    if ((ir.meses||[]).length) cells += `<div class="pair-cell">${chTitle('Ingresos por rubro')}<div class="chart-wrap res"><canvas id="chIng"></canvas></div></div>`;
+    if ((er.meses||[]).length) cells += `<div class="pair-cell">${chTitle('Egresos por rubro (top 10)')}<div class="chart-wrap res"><canvas id="chEgr"></canvas></div></div>`;
+    if (cells) html += `<div class="caja-card"><div class="pair-grid">${cells}</div></div>`;
   }
   if ((gc.items||[]).length) {
     const gh = Math.max(260, 26*gc.items.length);
@@ -1056,7 +1126,7 @@ function renderCaja(d) {
 // ── STARTUP ───────────────────────────────────────────────────
 if (loadConfig()) {
   document.getElementById('main').style.display  = 'block';
-  loadData();
+  switchTab('resumen');
 } else {
   document.getElementById('setup').style.display = 'flex';
 }

@@ -197,21 +197,25 @@ body {
 .caja-card { background: var(--surface); border-radius: 10px; border: 1px solid var(--border-soft); padding: 16px; margin-bottom: 16px; }
 .balance-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 @media (max-width: 560px) { .balance-cols { grid-template-columns: 1fr; } }
-.caja-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.caja-table thead th { font-size: 11px; font-weight: 500; color: var(--muted); text-align: right; padding: 0 0 8px; border-bottom: 1px solid var(--border); }
+.caja-table { width: auto; border-collapse: collapse; font-size: 13px; }
+.caja-table th, .caja-table td { padding-left: 24px; }
+.caja-table th:first-child, .caja-table td:first-child { padding-left: 0; }
+.caja-table thead th { font-size: 11px; font-weight: 500; color: var(--muted); text-align: right; padding-top: 0; padding-bottom: 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .caja-table thead th:first-child { text-align: left; }
 .caja-table tbody tr { border-bottom: 1px solid var(--border-soft); }
 .caja-table tbody tr:last-child { border-bottom: none; }
-.caja-table tbody td { padding: 7px 0; text-align: right; color: var(--text-2); }
+.caja-table tbody td { padding-top: 7px; padding-bottom: 7px; text-align: right; color: var(--text-2); white-space: nowrap; }
 .caja-table tbody td:first-child { text-align: left; color: var(--text-2); }
 .caja-table tbody tr.bold td { font-weight: 700; color: var(--text); border-top: 1px solid var(--border); }
-.caja-table tfoot td { padding: 9px 0 0; font-weight: 600; text-align: right; border-top: 1px solid var(--border); color: var(--text); }
+.caja-table tfoot td { padding-top: 9px; padding-bottom: 0; font-weight: 600; text-align: right; border-top: 1px solid var(--border); color: var(--text); white-space: nowrap; }
 .caja-table tfoot td:first-child { text-align: left; }
 .neg { color: #f08a8a; }
 .pos { color: #5fd39a; }
 .muted { color: var(--muted-2); }
 .chart-wrap { position: relative; height: 220px; margin-top: 12px; }
 .chart-wrap.tall { height: 300px; }
+.chart-wrap.res { height: 340px; max-width: 600px; }
+.fc-fallback { background: rgba(224,176,74,.16); }
 .caja-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .alert { border-radius: 8px; padding: 10px 14px; font-size: 12px; line-height: 1.5; }
 .alert.danger  { background: rgba(200,50,50,.14); color: #fca5a5; border: 1px solid rgba(200,50,50,.35); }
@@ -339,10 +343,75 @@ function loadResumen() {
   document.getElementById('resumen-app').innerHTML =
     '<div class="empty">🏠 Resumen — en construcción (B5).</div>';
 }
-function loadForecast() {
-  forecastLoaded = true;
-  document.getElementById('forecast-app').innerHTML =
-    '<div class="empty">📆 Forecast — en construcción (B3).</div>';
+function renderForecast(d) {
+  const fc = d.forecast_corto || {}, fl = d.forecast_largo || {};
+  let html = '';
+  html += `<div class="caja-meta">Generado: ${esc(d.generado || '-')}${d.asof ? ' · Datos al: ' + esc(d.asof) : ''}</div>`;
+
+  // ───── CORTO PLAZO (ARS) ─────
+  html += `<div class="section-label">Forecast de caja — corto plazo (ARS, próximos ${esc(String(fc.window || ''))} días)</div>`;
+  if (fc.error || !(fc.fechas || []).length) {
+    html += `<div class="caja-card"><div class="empty">Forecast de corto plazo no disponible.${fc.error ? ' (' + esc(fc.error) + ')' : ''}</div></div>`;
+  } else {
+    const cmin = fc.caja_minima || 0, smin = fc.smin, b0 = fc.b0;
+    const bad = (smin != null && smin < cmin);
+    html += `<div class="metrics-grid">
+      ${metricCard('Saldo inicial (hoy)', '$ ' + fmt(Math.round(b0)))}
+      ${metricCard('Saldo mínimo proyectado', '$ ' + fmt(Math.round(smin)), '', bad ? 'red' : 'green')}
+      ${metricCard('Caja mínima', '$ ' + fmt(Math.round(cmin)))}
+    </div>`;
+    if (bad) {
+      html += `<div class="caja-alerts"><div class="alert danger"><strong>Perfora la caja mínima:</strong> para sostener $${fmt(Math.round(cmin))} hay que vender ~US$ ${fmt(Math.round(fc.usd_vender || 0))}${fc.mep ? ' (MEP ' + fmt(Math.round(fc.mep)) + ')' : ''}.</div></div>`;
+    } else {
+      html += `<div class="caja-alerts"><div class="alert" style="background:rgba(42,110,42,.14);color:#8fd6a8;border:1px solid rgba(42,110,42,.35)"><strong>OK:</strong> la caja proyectada se mantiene sobre la caja mínima en la ventana.</div></div>`;
+    }
+    const dias = fc.fechas || [], dow = fc.dow || [];
+    const arsCell = v => { if (v == null || isNaN(v) || Math.abs(v) < 0.5) return '<span class="muted">—</span>'; const s = fmt(Math.round(Math.abs(v))); return v < 0 ? `<span class="neg">(${s})</span>` : `<span class="pos">${s}</span>`; };
+    const head = `<th>Línea</th>` + dias.map((f, i) => `<th>${esc(dow[i] || '')} <span style="font-weight:400;color:var(--muted-2)">${f.slice(8, 10)}/${f.slice(5, 7)}</span></th>`).join('');
+    const body = (fc.rows || []).map(r => `<tr><td>${esc(r.linea)}</td>${(r.montos || []).map((v, i) => `<td class="${(r.fallback || [])[i] ? 'fc-fallback' : ''}">${arsCell(v)}</td>`).join('')}</tr>`).join('');
+    const flujo = `<tr class="bold"><td>Flujo del día</td>${(fc.flujo || []).map(v => `<td>${arsCell(v)}</td>`).join('')}</tr>`;
+    const saldo = `<tr class="bold"><td>Saldo proyectado</td>${(fc.saldo || []).map(v => `<td><span class="${v < cmin ? 'neg' : ''}">${fmt(Math.round(v))}</span></td>`).join('')}</tr>`;
+    html += `<div class="caja-card"><div style="overflow-x:auto"><table class="caja-table"><thead><tr>${head}</tr></thead><tbody>${body}${flujo}${saldo}</tbody></table></div>
+      <div style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Montos en ARS. Las celdas <span style="background:rgba(224,176,74,.16);padding:0 5px;border-radius:3px">ámbar</span> usan un valor estimado (promedio de los últimos 3 meses) por falta de dato del vencimiento. Saldo en rojo = por debajo de la caja mínima.</div></div>`;
+  }
+
+  // ───── LARGO PLAZO (USD, 18m) ─────
+  html += `<div class="section-label" style="margin-top:8px">Forecast de caja — largo plazo (USD, 18 meses)</div>`;
+  if (fl.error || !(fl.meses || []).length) {
+    html += `<div class="caja-card"><div class="empty">Forecast de largo plazo no disponible.${fl.error ? ' (' + esc(fl.error) + ')' : ''}</div></div>`;
+  } else {
+    const rw = fl.runway_meses;
+    const rwCls = (rw == null) ? 'green' : (rw < 3 ? 'red' : rw < 6 ? 'amber' : 'green');
+    html += `<div class="metrics-grid">
+      ${metricCard('Liquidez (caja+bancos)', fmtBase(fl.liquidez))}
+      ${metricCard('Consumo corriente mensual', fmtBase(-(fl.consumo_corriente_mes || 0)))}
+      ${metricCard('Runway', rw == null ? '&gt; 18 meses' : rw.toFixed(1) + ' meses', 'hasta perforar caja 0', rwCls)}
+    </div>`;
+    if (rw != null && rw < 6) {
+      const cls = rw < 3 ? 'danger' : 'warning';
+      html += `<div class="caja-alerts"><div class="alert ${cls}"><strong>Runway ${rw < 3 ? 'crítico' : 'bajo'}:</strong> ~${rw.toFixed(1)} meses de consumo corriente antes de agotar la liquidez.</div></div>`;
+    }
+    const meses = fl.meses || [], si = fl.saldo_ini || [], sf = fl.saldo_fin || [];
+    const body = meses.map((m, i) => `<tr><td>${esc(m)}</td><td>${fmtBase(si[i])}</td><td>${fmtBase(sf[i])}</td></tr>`).join('');
+    html += `<div class="caja-card"><table class="caja-table"><thead><tr><th>Mes</th><th>Saldo inicial</th><th>Saldo final</th></tr></thead><tbody>${body}</tbody></table>
+      <div style="font-size:11px;color:var(--muted-2);margin-top:10px;line-height:1.5">Supuestos: ingresos corr. ${fmtBase(fl.ing_c)}/mes, egresos corr. ${fmtBase(fl.egr_c)}/mes, aportes prom. 6m ${fmtBase(fl.aportes_mes_6m)}/mes, retornos prom. 6m ${fmtBase(fl.retornos_mes_6m)}/mes. Runway = mes en que el saldo proyectado perfora 0.</div></div>`;
+  }
+
+  document.getElementById('forecast-app').innerHTML = html;
+}
+async function loadForecast() {
+  document.getElementById('forecast-app').innerHTML = '<div class="loading">⏳ Cargando forecast...</div>';
+  const { url, token } = CFG;
+  try {
+    const res = await fetch(`${url}?token=${encodeURIComponent(token)}&action=get_caja&t=${Date.now()}`);
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    forecastLoaded = true;
+    renderForecast(d);
+  } catch (err) {
+    document.getElementById('forecast-app').innerHTML =
+      `<div class="err-box">❌ No se pudo cargar el forecast<br><small>${esc(err.message)}</small></div>`;
+  }
 }
 // ── INIT ──────────────────────────────────────────────────────
 const CAT_COLORS = {
@@ -867,9 +936,9 @@ function renderCaja(d) {
     html += `<div class="section-label" style="margin-top:8px">Resultados: Ingresos − egresos (últimos 6 meses)</div>`;
   if ((r6.meses||[]).length && (r6.rows||[]).length)
     html += `<div class="caja-card">${chTitle('Corriente / no corriente ('+esc(d.base||'USD')+')')}${tablaMes(r6.meses, r6.rows)}${chCap('Corriente = total − no corriente. Los no-corrientes (extraordinarios) se definen en el Tracker; el resto sale por diferencia.')}</div>`;
-  if ((fl.meses||[]).length) html += `<div class="caja-card">${chTitle('Resultados ('+esc(d.base||'USD')+')')}<div class="chart-wrap"><canvas id="chFlujo"></canvas></div>${chCap('Ingresos corrientes (+) vs gastos (−); Resultado = ingresos − gastos. Las inversiones no se incluyen acá — son despliegue de capital y se ven en Flujo de caja USD.')}</div>`;
-  if ((ir.meses||[]).length) html += `<div class="caja-card">${chTitle('Ingresos por rubro')}<div class="chart-wrap"><canvas id="chIng"></canvas></div></div>`;
-  if ((er.meses||[]).length) html += `<div class="caja-card">${chTitle('Egresos por rubro (top 10)')}<div class="chart-wrap tall"><canvas id="chEgr"></canvas></div></div>`;
+  if ((fl.meses||[]).length) html += `<div class="caja-card">${chTitle('Resultados ('+esc(d.base||'USD')+')')}<div class="chart-wrap res"><canvas id="chFlujo"></canvas></div>${chCap('Ingresos corrientes (+) vs gastos (−); Resultado = ingresos − gastos. Las inversiones no se incluyen acá — son despliegue de capital y se ven en Flujo de caja USD.')}</div>`;
+  if ((ir.meses||[]).length) html += `<div class="caja-card">${chTitle('Ingresos por rubro')}<div class="chart-wrap res"><canvas id="chIng"></canvas></div></div>`;
+  if ((er.meses||[]).length) html += `<div class="caja-card">${chTitle('Egresos por rubro (top 10)')}<div class="chart-wrap res"><canvas id="chEgr"></canvas></div></div>`;
   if ((gc.items||[]).length) {
     const gh = Math.max(260, 26*gc.items.length);
     html += `<div class="section-label">Gasto por categoría — promedio mensual (${gc.n_meses||6} meses)</div>

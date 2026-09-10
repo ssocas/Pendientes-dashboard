@@ -207,6 +207,9 @@ body {
 .bj-item:hover { background: var(--surface-3); }
 .bj-from { font-weight: 600; color: var(--text); }
 .bj-date { color: var(--muted-2); font-size: 11px; }
+.tesis-box { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; border-left: 3px solid var(--accent); }
+.tesis-ul { margin: 4px 0 0 16px; padding: 0; }
+.tesis-ul li { font-size: 12.5px; color: var(--text); line-height: 1.5; margin-bottom: 5px; }
 .pair-cell { text-align: center; min-width: 0; }
 .tbl-wrap { display: inline-block; max-width: 100%; overflow-x: auto; text-align: left; vertical-align: top; }
 .ct-title { font-weight: 600; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
@@ -428,7 +431,12 @@ function renderResumen(d) {
     if (otros.length) inner += `<details class="bj-group"><summary class="bj-h" style="cursor:pointer;list-style:revert">🗂️ Otros (revisar) <span class="badge">${otros.length}</span></summary><div style="margin-top:6px">${otros.map(bjItem).join('')}</div></details>`;
     bandejaHtml = `<div class="caja-card" style="text-align:left">${inner}</div>`;
     const mer = bj.mercado || [];
-    tesisHtml = `<div class="caja-card" style="text-align:left">${mer.length ? `<div class="bj-h">📈 Novedades de mercado · ${bj.generado ? esc(bj.generado.slice(5)) : ''} <span class="badge">${mer.length}</span></div>${mer.map(bjItem).join('')}<div class="cap" style="font-size:11px;color:var(--muted-2);margin-top:8px">La síntesis de tesis (paso con IA) se agrega como tarea programada.</div>` : '<div class="empty">Sin novedades de mercado recientes.</div>'}</div>`;
+    const tz = bj.tesis || {};
+    let tHtml = '';
+    if (tz.bullets && tz.bullets.length) tHtml += `<div class="tesis-box"><div class="bj-h">🧭 Síntesis${tz.generado ? ` · ${esc(tz.generado.slice(5))}` : ''}</div><ul class="tesis-ul">${tz.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>`;
+    if (mer.length) tHtml += `<div class="bj-h">📈 Novedades de mercado <span class="badge">${mer.length}</span></div>${mer.map(bjItem).join('')}`;
+    if (!tHtml) tHtml = '<div class="empty">Sin novedades de mercado recientes.</div>';
+    tesisHtml = `<div class="caja-card" style="text-align:left">${tHtml}</div>`;
   }
   html += `<div class="res-grid">
     <div class="section"><div class="section-title"><span class="dot" style="background:#4a78c2"></span>Bandeja de entrada${bjReady?`<span class="badge">${(bj.counts||{}).atender||0}</span>`:''}</div>${bandejaHtml}</div>

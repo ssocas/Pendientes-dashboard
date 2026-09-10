@@ -434,7 +434,7 @@ function renderResumen(d) {
     const tz = bj.tesis || {};
     let tHtml = '';
     if (tz.bullets && tz.bullets.length) tHtml += `<div class="tesis-box"><div class="bj-h">🧭 Síntesis${tz.generado ? ` · ${esc(tz.generado.slice(5))}` : ''}</div><ul class="tesis-ul">${tz.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>`;
-    if (mer.length) tHtml += `<div class="bj-h">📈 Novedades de mercado <span class="badge">${mer.length}</span></div>${mer.map(bjItem).join('')}`;
+    if (mer.length) tHtml += `<details class="bj-group"><summary class="bj-h" style="cursor:pointer;list-style:revert">📈 Novedades de mercado <span class="badge">${mer.length}</span></summary><div style="margin-top:6px">${mer.map(bjItem).join('')}</div></details>`;
     if (!tHtml) tHtml = '<div class="empty">Sin novedades de mercado recientes.</div>';
     tesisHtml = `<div class="caja-card" style="text-align:left">${tHtml}</div>`;
   }

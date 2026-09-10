@@ -203,13 +203,35 @@ body {
 @media (max-width: 900px) { .res-grid { grid-template-columns: 1fr; } }
 .bj-group { margin-bottom: 10px; }
 .bj-h { font-size: 11px; font-weight: 700; color: var(--text-2); margin: 4px 0 6px; }
-.bj-item { display: block; padding: 7px 10px; border-radius: 7px; background: var(--surface-2); margin-bottom: 5px; text-decoration: none; color: var(--text-2); font-size: 12px; line-height: 1.4; border-left: 3px solid var(--accent); }
-.bj-item:hover { background: var(--surface-3); }
+.bj-item { display: block; padding: 8px 2px; border-bottom: 1px solid var(--border-soft); text-decoration: none; color: var(--text-2); font-size: 12px; line-height: 1.4; }
+.bj-item:last-child { border-bottom: none; }
+.bj-item:hover .bj-subj { color: var(--text); }
 .bj-from { font-weight: 600; color: var(--text); }
 .bj-date { color: var(--muted-2); font-size: 11px; }
-.tesis-box { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; border-left: 3px solid var(--accent); }
+.tesis-box { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin-bottom: 4px; }
 .tesis-ul { margin: 4px 0 0 16px; padding: 0; }
 .tesis-ul li { font-size: 12.5px; color: var(--text); line-height: 1.5; margin-bottom: 5px; }
+.rs-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 4px 14px; }
+.rs-row { padding: 9px 0; border-bottom: 1px solid var(--border-soft); }
+.rs-row:last-child { border-bottom: none; }
+.ev { display: flex; gap: 12px; align-items: flex-start; }
+.ev-date { flex-shrink: 0; width: 46px; text-align: center; }
+.ev-d { font-size: 22px; font-weight: 800; color: var(--text); line-height: 1; }
+.ev-m { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-top: 3px; }
+.ev-body { flex: 1; min-width: 0; }
+.ev-title { font-size: 13px; color: var(--text); font-weight: 500; line-height: 1.35; }
+.ev-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.tk { padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+.tk:last-child { border-bottom: none; }
+.rgrp:last-child .tk:last-child { border-bottom: none; }
+.tk-top { display: flex; align-items: flex-start; gap: 8px; }
+.pdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.tk-desc { font-size: 12.5px; color: var(--text); line-height: 1.4; flex: 1; min-width: 0; }
+.tk-ctl { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 7px; padding-left: 16px; }
+.tk-actions { margin-left: auto; display: flex; gap: 2px; }
+.rgrp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin: 12px 0 2px; }
+.rgrp:first-child .rgrp-label { margin-top: 4px; }
+.rs-sub { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-2); margin: 6px 0 6px; }
 .pair-cell { text-align: center; min-width: 0; }
 .tbl-wrap { display: inline-block; max-width: 100%; overflow-x: auto; text-align: left; vertical-align: top; }
 .ct-title { font-weight: 600; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
@@ -386,6 +408,33 @@ async function loadResumen() {
       `<div class="err-box">❌ ${esc(err.message)}<br><small>Verificá la URL y el token en ⚙</small></div>`;
   }
 }
+const PRIO_DOT = { '🔴 Crítica':'#ef4444', '🟠 Alta':'#f97316', '🟡 Media':'#eab308', '🟢 Baja':'#22c55e' };
+function editPanelHtml(t) {
+  return `<div class="edit-panel">
+    <input type="text" value="${esc(t.desc)}" placeholder="Descripción" onclick="event.stopPropagation()" onblur="event.stopPropagation();saveField(${t.id},'desc',this.value)">
+    <div class="edit-row">
+      <select onclick="event.stopPropagation()" onchange="event.stopPropagation();saveField(${t.id},'cat',this.value)">${CAT_ORDER.map(c=>`<option value="${esc(c)}"${c===t.cat?' selected':''}>${esc(c)}</option>`).join('')}</select>
+      <input type="date" value="${t.venc?esc(t.venc.slice(0,10)):''}" onclick="event.stopPropagation()" onchange="event.stopPropagation();saveField(${t.id},'venc',this.value)">
+    </div>
+    <input type="text" value="${esc(t.tercero||'')}" placeholder="Tercero" onclick="event.stopPropagation()" onblur="event.stopPropagation();saveField(${t.id},'tercero',this.value)">
+    <textarea placeholder="Notas" onclick="event.stopPropagation()" onblur="event.stopPropagation();saveField(${t.id},'notas',this.value)">${esc(t.notas||'')}</textarea>
+  </div>`;
+}
+function resTaskRow(t, controls) {
+  const dotc = PRIO_DOT[normPrio(t.prio)] || 'var(--muted)';
+  let vTag = '';
+  if (t.venc) { const diff = daysFrom(t.venc); const urg = diff !== null && diff <= 2; vTag = `<span class="tag tag-venc${urg?' urgent':''}">⏰ ${labelDays(diff)}</span>`; }
+  let acts = '';
+  if (controls.includes('star'))     { const a = t.hoy === '⭐';    acts += `<button class="toggle-btn${a?' active':''}" onclick="event.stopPropagation();toggleHoy(${t.id})" title="${a?'Quitar de Hoy':'Marcar para Hoy'}">${a?'⭐':'☆'}</button>`; }
+  if (controls.includes('bookmark')) { const a = t.semana === '✅'; acts += `<button class="toggle-btn${a?' active':''}" onclick="event.stopPropagation();toggleSemana(${t.id})" title="${a?'Quitar del radar':'Agregar al radar'}">${a?'🔖':'📑'}</button>`; }
+  if (controls.includes('edit'))     { const op = editingId === t.id; acts += `<button class="toggle-btn${op?' active':''}" onclick="event.stopPropagation();toggleEdit(${t.id})" title="Editar">✎</button>`; }
+  const editP = editingId === t.id ? editPanelHtml(t) : '';
+  return `<div class="tk">
+    <div class="tk-top"><span class="pdot" style="background:${dotc}"></span><span class="tk-desc">${esc(t.desc)}</span><span class="tag tag-cat">${esc(t.cat)}</span><span class="tag tag-id">#${t.id}</span></div>
+    <div class="tk-ctl">${prioSelect(t)}${statusSelect(t)}${vTag}<span class="tk-actions">${acts}</span></div>
+    ${editP}
+  </div>`;
+}
 function renderResumen(d) {
   const tasks = ALL_TASKS || [];
   const hoy        = tasks.filter(t => t.hoy === '⭐');
@@ -399,49 +448,60 @@ function renderResumen(d) {
   let html = '';
 
   // ── Fila 1: Agenda+vencimientos | Foco de hoy ──
-  let ag = renderCalendar(CAL_EVENTS);
-  if (venc7.length) ag += `<div class="cal-day"><div class="cal-day-header">⏰ Vencimientos (tareas)</div>${venc7.map(t => `<div class="cal-event"><span class="cal-time">${esc(labelDays(daysFrom(t.venc)))}</span><span class="cal-title">${esc(t.desc)}</span></div>`).join('')}</div>`;
-  let foco = '';
-  if (vencidas.length) foco += `<div class="alert danger" style="margin-bottom:10px"><strong>⚠️ ${vencidas.length} vencida${vencidas.length > 1 ? 's' : ''}:</strong><br>${vencidas.map(t => esc(t.desc) + ' <span style="opacity:.75">(' + esc(labelDays(daysFrom(t.venc))) + ')</span>').join('<br>')}</div>`;
-  foco += hoy.length ? hoy.map(t => renderTask(t, '', ['star', 'edit'])).join('') : '<div class="empty">Sin tareas marcadas para hoy.</div>';
+  const agItems = [];
+  (CAL_EVENTS || []).forEach(e => agItems.push({ date: e.date, time: e.time, title: e.title, cat: '', kind: 'ev' }));
+  venc7.forEach(t => agItems.push({ date: (t.venc || '').slice(0, 10), time: '', title: t.desc, cat: t.cat, kind: 'venc' }));
+  agItems.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+  const evChip = ds => { const p = (ds || '').split('-').map(Number); if (p.length < 3) return { d: '?', m: '' }; const dt = new Date(p[0], p[1]-1, p[2]); return { d: p[2], m: (dt.toLocaleDateString('es-AR', {weekday:'short'}) + ' ' + dt.toLocaleDateString('es-AR', {month:'short'})).replace(/\./g, '') }; };
+  const agHtml = agItems.length ? agItems.map(x => {
+    const c = evChip(x.date);
+    const sub = x.kind === 'venc' ? 'Vence' : (x.time ? ('🕐 ' + x.time) : 'Todo el día');
+    const tag = x.cat ? `<span class="tag tag-cat">${esc(x.cat)}</span>` : (x.kind === 'venc' ? `<span class="tag tag-venc">Vencimiento</span>` : '');
+    return `<div class="rs-row ev"><div class="ev-date"><div class="ev-d">${c.d}</div><div class="ev-m">${esc(c.m)}</div></div><div class="ev-body"><div class="ev-title">${esc(x.title)}</div><div class="ev-sub">${sub}</div>${tag ? `<div style="margin-top:5px">${tag}</div>` : ''}</div></div>`;
+  }).join('') : '<div class="empty">Sin agenda ni vencimientos en 7 días.</div>';
+  let vencBox = vencidas.length ? `<div class="alert danger" style="margin:4px 0 8px"><strong>⚠️ ${vencidas.length} vencida${vencidas.length > 1 ? 's' : ''}:</strong><br>${vencidas.map(t => esc(t.desc) + ' <span style="opacity:.75">(' + esc(labelDays(daysFrom(t.venc))) + ')</span>').join('<br>')}</div>` : '';
+  const focoRows = hoy.length ? hoy.map(t => resTaskRow(t, ['star', 'edit'])).join('') : '<div class="empty">Sin tareas marcadas para hoy.</div>';
   html += `<div class="res-grid">
-    <div class="section"><div class="section-title"><span class="dot" style="background:#d9a441"></span>Agenda y vencimientos · 7 días<span class="badge">${CAL_EVENTS.length + venc7.length}</span></div>${ag}</div>
-    <div class="section"><div class="section-title"><span class="dot" style="background:#d97706"></span>Foco de hoy<span class="badge">${hoy.length}</span></div>${foco}</div>
+    <div class="section"><div class="section-title"><span class="dot" style="background:#d9a441"></span>Agenda y vencimientos · 7 días<span class="badge">${agItems.length}</span></div><div class="rs-card">${agHtml}</div></div>
+    <div class="section"><div class="section-title"><span class="dot" style="background:#d97706"></span>Foco de hoy<span class="badge">${hoy.length}</span></div><div class="rs-card">${vencBox}${focoRows}</div></div>
   </div>`;
 
-  // ── Fila 2: Radar de la semana (2 columnas, editable) ──
-  html += `<div class="section"><div class="section-title"><span class="dot" style="background:#22c55e"></span>Radar de la semana<span class="badge">${semanaOnly.length}</span></div>
-    <div class="tasks-grid">${semanaOnly.length ? semanaOnly.map(t => renderTask(t, '', ['star', 'bookmark', 'edit'])).join('') : '<div class="empty">Sin tareas en el radar semanal (fuera de las de hoy).</div>'}</div></div>`;
+  // ── Fila 2: Radar de la semana — agrupado por categoría, bullet por prioridad ──
+  let radHtml;
+  if (!semanaOnly.length) radHtml = '<div class="empty">Sin tareas en el radar semanal (fuera de las de hoy).</div>';
+  else {
+    let gg = '';
+    CAT_ORDER.forEach(c => { const arr = semanaOnly.filter(t => t.cat === c); if (arr.length) gg += `<div class="rgrp"><div class="rgrp-label">${esc(c)}</div>${arr.map(t => resTaskRow(t, ['star','bookmark','edit'])).join('')}</div>`; });
+    const rest = semanaOnly.filter(t => !CAT_ORDER.includes(t.cat));
+    if (rest.length) gg += `<div class="rgrp"><div class="rgrp-label">Otros</div>${rest.map(t => resTaskRow(t, ['star','bookmark','edit'])).join('')}</div>`;
+    radHtml = gg;
+  }
+  html += `<div class="section"><div class="section-title"><span class="dot" style="background:#22c55e"></span>Radar de la semana<span class="badge">${semanaOnly.length}</span></div><div class="rs-card">${radHtml}</div></div>`;
 
-  // ── Fila 3: Bandeja | Radar de tesis (placeholders hasta A2) ──
+  // ── Fila 3: Bandeja y radar de tesis — un solo box con subtítulos ──
   const bj = RESUMEN_BANDEJA || {};
   const bjReady = !!(bj && bj.buckets);
   const bjItem = it => `<a class="bj-item" href="${esc(it.link||'#')}" target="_blank" rel="noopener"><span class="bj-from">${esc(it.from||it.email||'')}</span> <span class="bj-date">· ${esc((it.date||'').slice(5,16))}</span><br><span class="bj-subj">${esc(it.subject||'')}</span></a>`;
-  let bandejaHtml, tesisHtml;
+  let boxInner;
   if (!bjReady) {
-    bandejaHtml = `<div class="caja-card"><div class="empty">Se activa cuando re-despliegues el Apps Script con la bandeja (A2).</div></div>`;
-    tesisHtml   = `<div class="caja-card"><div class="empty">Se activa con el radar de tesis (A2).</div></div>`;
+    boxInner = `<div class="empty">Se activa cuando re-despliegues el Apps Script con la bandeja.</div>`;
   } else {
     const ORD = ['Finanzas','Contactos','Barrio','Seguridad'];
     const ICON = { Finanzas:'💰', Contactos:'👤', Barrio:'🏘️', Seguridad:'🔒' };
-    let inner = '';
-    ORD.forEach(bk => { const arr = (bj.buckets[bk] || []); if (arr.length) inner += `<div class="bj-group"><div class="bj-h">${ICON[bk]||''} ${bk} <span class="badge">${arr.length}</span></div>${arr.map(bjItem).join('')}</div>`; });
+    let at = '';
+    ORD.forEach(bk => { const arr = (bj.buckets[bk] || []); if (arr.length) at += `<div class="bj-group"><div class="bj-h">${ICON[bk]||''} ${bk} <span class="badge">${arr.length}</span></div>${arr.map(bjItem).join('')}</div>`; });
     const otros = bj.otros || [];
-    if (!inner && !otros.length) inner = `<div class="empty">Bandeja al día — nada para atender.</div>`;
-    if (otros.length) inner += `<details class="bj-group"><summary class="bj-h" style="cursor:pointer;list-style:revert">🗂️ Otros (revisar) <span class="badge">${otros.length}</span></summary><div style="margin-top:6px">${otros.map(bjItem).join('')}</div></details>`;
-    bandejaHtml = `<div class="caja-card" style="text-align:left">${inner}</div>`;
+    if (!at && !otros.length) at = `<div class="empty">Bandeja al día — nada para atender.</div>`;
+    if (otros.length) at += `<details class="bj-group"><summary class="bj-h" style="cursor:pointer;list-style:revert">🗂️ Otros (revisar) <span class="badge">${otros.length}</span></summary><div style="margin-top:6px">${otros.map(bjItem).join('')}</div></details>`;
     const mer = bj.mercado || [];
     const tz = bj.tesis || {};
-    let tHtml = '';
-    if (tz.bullets && tz.bullets.length) tHtml += `<div class="tesis-box"><div class="bj-h">🧭 Síntesis${tz.generado ? ` · ${esc(tz.generado.slice(5))}` : ''}</div><ul class="tesis-ul">${tz.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>`;
-    if (mer.length) tHtml += `<details class="bj-group"><summary class="bj-h" style="cursor:pointer;list-style:revert">📈 Novedades de mercado <span class="badge">${mer.length}</span></summary><div style="margin-top:6px">${mer.map(bjItem).join('')}</div></details>`;
-    if (!tHtml) tHtml = '<div class="empty">Sin novedades de mercado recientes.</div>';
-    tesisHtml = `<div class="caja-card" style="text-align:left">${tHtml}</div>`;
+    let te = '';
+    if (tz.bullets && tz.bullets.length) te += `<div class="tesis-box"><ul class="tesis-ul">${tz.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>${tz.generado ? `<div class="cap" style="font-size:10px;color:var(--muted-2);margin-top:6px">Síntesis · ${esc(tz.generado.slice(5))}</div>` : ''}</div>`;
+    if (mer.length) te += `<details class="bj-group"><summary class="bj-h" style="cursor:pointer;list-style:revert">📈 Novedades de mercado <span class="badge">${mer.length}</span></summary><div style="margin-top:6px">${mer.map(bjItem).join('')}</div></details>`;
+    if (!te) te = '<div class="empty">Sin novedades de mercado recientes.</div>';
+    boxInner = `<div class="rs-sub">🎯 Requiere atención</div>${at}<div class="rs-sub" style="margin-top:14px">📈 Radar de tesis</div>${te}`;
   }
-  html += `<div class="res-grid">
-    <div class="section"><div class="section-title"><span class="dot" style="background:#4a78c2"></span>Bandeja de entrada${bjReady?`<span class="badge">${(bj.counts||{}).atender||0}</span>`:''}</div>${bandejaHtml}</div>
-    <div class="section"><div class="section-title"><span class="dot" style="background:#7c3aed"></span>Radar de tesis</div>${tesisHtml}</div>
-  </div>`;
+  html += `<div class="section"><div class="section-title"><span class="dot" style="background:#4a78c2"></span>Bandeja y radar de tesis${bjReady?`<span class="badge">${(bj.counts||{}).atender||0}</span>`:''}</div><div class="rs-card" style="text-align:left">${boxInner}</div></div>`;
 
   // ── Fila 4: Finanzas y caja ──
   const bad = (fc.smin != null && fc.caja_minima != null && fc.smin < fc.caja_minima);
